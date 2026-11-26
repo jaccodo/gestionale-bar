@@ -16,3 +16,9 @@ Provarla sul PC: `node server.js` e apri
 ## Attivazione (una volta sola)
 1. Console Firebase → Firestore → Regole: incolla tutto `catalogo-app/firestore.rules` e pubblica.
 2. Per metterla online: repo GitHub con Pages, poi aggiungi il dominio in Firebase → Authentication → Settings → Domini autorizzati (jaccodo.github.io c'è già).
+
+## Backup
+Ogni giorno verso le 4 lo script `catalogo-app/backup-drive/Bar.gs` (progetto Apps Script "Backup Catalogo") sovrascrive il foglio "Backup Gestionale Bar" nella cartella Drive BackUp_App, con le schede Giorni, Spese Incasso2 e Mesi.
+
+## Simulazione
+https://jaccodo.github.io/gestionale-bar/?prova apre una simulazione con dati finti (20 spese su tre mesi), solo nel browser: il database vero non viene toccato.
