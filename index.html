@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: banda scura in alto con titolo e schede (Giorni, Riepilogo), barra del mese, sotto il contenuto;
+/* Layout: banda scura in alto con titolo e schede (Giorni a tabella, Calendario con zoom mese/anno/anni, Riepilogo), barra del mese, sotto il contenuto;
    tocco su un giorno = foglio dal basso per segnare Incasso1, Incasso2, parziale mattina (sul totale) e note. */
 :root{
   --bg:#f4f5f7; --surface:#ffffff; --fg:#1b1f27; --muted:#5d6470; --line:#e2e5eb; --soft:#eef0f4;
@@ -61,40 +61,105 @@ main .wrap{padding-block:14px 60px}
 
 /* barra del mese */
 .monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-.monthbar h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;text-transform:capitalize;white-space:nowrap}
+.monthbar h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;text-transform:capitalize;white-space:nowrap;min-width:0}
+.mlbl{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;margin-left:-6px;border-radius:10px}
+.mlbl.zoom::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-3px)}
+.mlbl.zoom:hover{background:var(--soft)}
+.mlbl:focus-visible{outline:2px solid var(--accent)}
+.mlbl:not(.zoom){cursor:default}
 .nav{display:flex;gap:6px}
 .icon-btn,.txt-btn{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;font-weight:600}
 .icon-btn{width:38px;font-size:1.1rem}
 .txt-btn{padding:0 12px;font-size:.88rem}
 .icon-btn:disabled{opacity:.35;cursor:default}
 .icon-btn:focus-visible,.txt-btn:focus-visible{outline:2px solid var(--accent)}
-
-/* striscia totali in cima alla lista */
-.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.strip > div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 11px;min-width:0}
-.strip .l{font-size:.74rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
-.strip .v{font-weight:700;font-size:1.02rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.hint{font-size:.75rem;color:var(--muted);margin:8px 2px 0}
 
-/* lista giorni */
-.days{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.day{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
-.day:first-child{border-top:0}
-.day:hover{background:var(--soft)}
-.day:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.day.today .dn{background:var(--accent);color:var(--on-accent)}
-.dn{width:44px;height:44px;border-radius:12px;background:var(--soft);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
-.dn b{font-size:1.05rem}
-.dn span{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;color:inherit;opacity:.75}
-.dmid{min-width:0;display:flex;flex-direction:column;gap:3px}
-.dvals{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.86rem}
-.dvals span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.dsplit{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dnote{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dnote::before{content:"✎ "}
-.dtot{font-weight:700;text-align:right;white-space:nowrap}
-.empty{color:var(--muted);font-size:.86rem}
-.day.vuoto:not(.today) .dn{background:transparent;border:1px dashed var(--line)}
+/* tabella giorni, come un foglio Excel */
+.sheetwrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+table.xl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.9rem;table-layout:fixed}
+.xl col.c-day{width:84px}
+.xl th,.xl td{padding:9px 10px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line)}
+.xl th + th,.xl td + td{border-left:1px solid var(--line)}
+.xl th:first-child,.xl td:first-child{text-align:left}
+.xl thead th{position:sticky;top:0;background:var(--soft);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding-block:8px}
+.xl thead th .dot{width:7px;height:7px;margin-right:5px;vertical-align:1px}
+.xl tbody tr{cursor:pointer}
+.xl tbody tr:hover td{background:var(--soft)}
+.xl tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.xl tbody tr.we td:first-child{color:var(--i2)}
+.xl tbody tr.today td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.xl tbody tr.today td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.xl td.day b{font-weight:700}
+.xl td.day small{color:var(--muted);font-size:.7rem;text-transform:uppercase;margin-left:4px}
+.xl td.day .nt{color:var(--am);font-size:.75rem;margin-left:3px}
+.xl td.tot{font-weight:700}
+.xl td.am{color:var(--am)}
+.xl td.vuoto{color:var(--muted);opacity:.5}
+.xl tfoot td{background:var(--soft);font-weight:700;border-bottom:0}
+.xl tfoot tr.pct td{font-weight:600;font-size:.8rem;color:var(--muted);padding-top:0}
+.xl tfoot tr:first-child td{border-top:2px solid var(--line)}
+@media (max-width:480px){
+  table.xl{font-size:.8rem}
+  .xl col.c-day{width:46px}
+  .xl th,.xl td{padding:8px 6px}
+  .xl thead th{font-size:.62rem;letter-spacing:.02em}
+  .xl thead th .dot{display:none}
+  .xl td.day small{display:block;margin:0;font-size:.6rem;line-height:1}
+}
+
+/* calendario: mese → anno → anni, come Google Calendar */
+.cal{touch-action:pan-y}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px}
+.wk span{font-size:.7rem;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase}
+.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cell{all:unset;box-sizing:border-box;min-width:0;min-height:74px;border-radius:10px;background:var(--surface);border:1px solid var(--line);padding:5px 6px;display:flex;flex-direction:column;gap:2px;cursor:pointer;position:relative}
+.cell:hover{border-color:var(--muted)}
+.cell:focus-visible{outline:2px solid var(--accent)}
+.cell.out{visibility:hidden}
+.cell.fut{opacity:.45;cursor:default}
+.cell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cell .n{font-size:.78rem;font-weight:700}
+.cell.we .n{color:var(--i2)}
+.cell .t{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .s{display:flex;height:4px;border-radius:999px;overflow:hidden;background:var(--soft)}
+.cell .s i{display:block;height:100%}
+.cell .nt{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--am)}
+.cell .am{font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){
+  .wk,.mgrid{gap:3px}
+  .cell{min-height:62px;padding:4px;border-radius:8px}
+  .cell .t{font-size:.68rem}
+  .cell .am{display:none}
+}
+.yr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:520px){.yr{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:760px){.yr{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.mese{box-sizing:border-box;min-width:0;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 6px 8px;display:block}
+.mese:hover{border-color:var(--muted)}
+.mese:focus-visible{outline:2px solid var(--accent)}
+.mese.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mese h4{margin:0 4px 4px;font-size:.85rem;text-transform:capitalize;font-family:var(--f-display);display:flex;justify-content:space-between;gap:6px}
+.mese h4 span{font-family:var(--f-body);font-size:.74rem;font-variant-numeric:tabular-nums}
+.mese .mg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.mese .md{font-size:.6rem;font-weight:600;text-align:center;line-height:1.7;border-radius:4px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mese .md.on{color:var(--fg)}
+.mese .md.t{outline:1.5px solid var(--accent);outline-offset:-1px}
+.heat{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);margin-top:10px}
+.heat i{display:inline-block;width:16px;height:10px;border-radius:3px}
+.yrs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (min-width:620px){.yrs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ybox{box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;min-width:0}
+.ybox b{display:block;font-family:var(--f-display);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.ybox span{font-size:.74rem;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.ybox:hover{border-color:var(--muted)}
+.ybox:focus-visible{outline:2px solid var(--accent)}
+.ybox.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.ybox.fut{opacity:.45;cursor:default}
+.xl small.pc{display:block;font-size:.68rem;font-weight:600;color:var(--muted);line-height:1.1}
+.xl.mesi{min-width:520px}
+.muted{color:var(--muted)}
 
 /* riepilogo */
 .cards{display:grid;gap:12px}
@@ -178,7 +243,8 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
-      <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo del mese</button>
+      <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
+      <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
     </nav>
   </div>
 </header>
@@ -191,7 +257,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
   <div class="wrap">
     <div id="notice"></div>
     <div class="monthbar">
-      <h2 id="mTitle"></h2>
+      <h2><button class="mlbl" id="mTitle" type="button"></button></h2>
       <div class="nav">
         <button class="icon-btn" id="prev" type="button" aria-label="Mese precedente">‹</button>
         <button class="txt-btn" id="oggi" type="button">Oggi</button>
@@ -199,6 +265,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       </div>
     </div>
     <section id="v-giorni"></section>
+    <section id="v-calendario" class="cal" hidden></section>
     <section id="v-riepilogo" hidden></section>
   </div>
 </main>
@@ -269,6 +336,9 @@ const fMonth = new Intl.DateTimeFormat('it-IT', { month:'long', year:'numeric' }
 const fLong = new Intl.DateTimeFormat('it-IT', { weekday:'long', day:'numeric', month:'long' });
 const fWd = new Intl.DateTimeFormat('it-IT', { weekday:'short' });
 const fEur = new Intl.NumberFormat('it-IT', { style:'currency', currency:'EUR', useGrouping:'always' });
+const fNum = new Intl.NumberFormat('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2, useGrouping:'always' });
+const fNum0 = new Intl.NumberFormat('it-IT', { maximumFractionDigits:0, useGrouping:'always' });
+const cap = s => s.replace(/^./, c => c.toUpperCase());
 const fEur0 = new Intl.NumberFormat('it-IT', { style:'currency', currency:'EUR', maximumFractionDigits:0, useGrouping:'always' });
 const fPct = new Intl.NumberFormat('it-IT', { maximumFractionDigits:1, minimumFractionDigits:1 });
 const eur = n => fEur.format(n || 0);
@@ -294,7 +364,7 @@ const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
 /* ---------- stato ---------- */
 let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
 let me = null, backend = null;
-let view = ssGet('bar-vista') === 'riepilogo' ? 'riepilogo' : 'giorni';
+let view = ['giorni','calendario','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
 let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
 
 const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
@@ -327,47 +397,171 @@ function stats(m){
 /* ---------- disegno ---------- */
 function render(){
   const [y, mo] = month.split('-').map(Number);
-  $('mTitle').textContent = fMonth.format(new Date(y, mo - 1, 1));
-  $('next').disabled = month >= TODAY().slice(0, 7);
-  $('oggi').hidden = month === TODAY().slice(0, 7);
-  $('tab-giorni').setAttribute('aria-selected', view === 'giorni');
-  $('tab-riepilogo').setAttribute('aria-selected', view === 'riepilogo');
-  $('v-giorni').hidden = view !== 'giorni';
-  $('v-riepilogo').hidden = view !== 'riepilogo';
-  if(view === 'giorni') renderGiorni(); else renderRiepilogo();
+  const cur = TODAY().slice(0, 7), lvl = view === 'calendario' ? calLevel : 'm';
+  ssSet('bar-zoom', JSON.stringify({ l: calLevel, ys: yearsStart }));
+  // Titolo: mese, anno o gruppo di anni a seconda dello zoom. Nel calendario si tocca per rimpicciolire.
+  $('mTitle').textContent = lvl === 'm' ? fMonth.format(new Date(y, mo - 1, 1)) : lvl === 'y' ? String(y) : `${yearsStart} – ${yearsStart + 11}`;
+  $('mTitle').classList.toggle('zoom', view === 'calendario' && lvl !== 'a');
+  $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
+  $('oggi').hidden = lvl === 'm' && month === cur;
+  for(const v of ['giorni','calendario','riepilogo']){
+    $('tab-' + v).setAttribute('aria-selected', view === v);
+    $('v-' + v).hidden = view !== v;
+  }
+  if(view === 'giorni') renderGiorni();
+  else if(view === 'calendario') renderCal();
+  else renderRiepilogo();
 }
 
+const tot = g => (g.incasso1 || 0) + (g.incasso2 || 0);
+const hasInc = g => !!g && (g.incasso1 != null || g.incasso2 != null);
+const num = n => n == null ? '' : fNum.format(n);
+
+/* Giorni: tabella tipo Excel, una riga per giorno. */
 function renderGiorni(){
   const s = stats(month), today = TODAY();
-  // Mese in corso: fino a oggi; mesi passati: tutti i giorni. Dal più recente.
-  const list = monthDays(month).filter(d => d <= today).reverse();
-  const strip = `<div class="strip">
-    <div><div class="l"><span class="dot" style="background:var(--i1)"></span>Incasso1</div><div class="v num">${fEur0.format(s.i1)}</div></div>
-    <div><div class="l"><span class="dot" style="background:var(--i2)"></span>Incasso2</div><div class="v num">${fEur0.format(s.i2)}</div></div>
-    <div><div class="l">Totale</div><div class="v num">${fEur0.format(s.tot)}</div></div>
-  </div>`;
+  const list = monthDays(month).filter(d => d <= today);
+  const cell = (v, cls = '') => v == null ? `<td class="vuoto ${cls}">–</td>` : `<td class="${cls}">${num(v)}</td>`;
   const rows = list.map(d => {
-    const g = G[d], dt = parse(d);
-    const head = `<span class="dn"><b>${dt.getDate()}</b><span>${fWd.format(dt).replace('.', '')}</span></span>`;
-    if(!hasData(g)) return `<button class="day vuoto${d === today ? ' today' : ''}" type="button" data-d="${d}">${head}<span class="dmid"><span class="empty">Da segnare</span></span><span></span></button>`;
-    const vals = [];
-    if(g.incasso1 != null) vals.push(`<span><span class="dot" style="background:var(--i1)"></span><span class="num">${eur(g.incasso1)}</span></span>`);
-    if(g.incasso2 != null) vals.push(`<span><span class="dot" style="background:var(--i2)"></span><span class="num">${eur(g.incasso2)}</span></span>`);
-    const hasInc = g.incasso1 != null || g.incasso2 != null;
-    const split = hasInc && g.mattina != null
-      ? `<span class="dsplit num">Mattina ${eur(g.mattina)} · Pomeriggio ${eur((g.incasso1 || 0) + (g.incasso2 || 0) - g.mattina)}</span>`
-      : hasInc ? `<span class="dsplit">Parziale mattina non segnato</span>` : '';
-    const note = (g.note || '').trim() ? `<span class="dnote">${esc(g.note.trim().split('\n')[0])}</span>` : '';
-    const t = (g.incasso1 || 0) + (g.incasso2 || 0);
-    return `<button class="day${d === today ? ' today' : ''}" type="button" data-d="${d}">${head}<span class="dmid"><span class="dvals">${vals.join('') || '<span class="empty">Solo nota</span>'}</span>${split}${note}</span><span class="dtot num">${vals.length ? fEur0.format(t) : ''}</span></button>`;
+    const g = G[d] || {}, dt = parse(d), wd = dt.getDay();
+    const nota = (g.note || '').trim();
+    return `<tr tabindex="0" data-d="${d}" class="${wd === 0 || wd === 6 ? 'we' : ''}${d === today ? ' today' : ''}"${nota ? ` title="${esc(nota)}"` : ''}>
+      <td class="day"><b>${dt.getDate()}</b><small>${fWd.format(dt).replace('.', '')}</small>${nota ? '<span class="nt" aria-label="con nota">✎</span>' : ''}</td>
+      ${cell(g.mattina, 'am')}${cell(g.incasso1)}${cell(g.incasso2)}
+      ${hasInc(g) ? `<td class="tot">${num(tot(g))}</td>` : '<td class="vuoto tot">–</td>'}
+    </tr>`;
   }).join('');
-  $('v-giorni').innerHTML = strip + (list.length ? `<div class="days">${rows}</div>` : '<p class="muted">Nessun giorno da mostrare.</p>');
+  const splitTot = s.am + s.pm;
+  $('v-giorni').innerHTML = list.length ? `<div class="sheetwrap"><table class="xl">
+    <colgroup><col class="c-day"><col><col><col><col></colgroup>
+    <thead><tr><th>Giorno</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr><td>Totale</td><td>${num(s.am)}</td><td>${num(s.i1)}</td><td>${num(s.i2)}</td><td>${num(s.tot)}</td></tr>
+      <tr class="pct"><td></td><td>${s.splitDays ? pct(s.am, splitTot) : ''}</td><td>${pct(s.i1, s.tot)}</td><td>${pct(s.i2, s.tot)}</td><td>${s.incDays ? 'media ' + fNum0.format(s.media) : ''}</td></tr>
+    </tfoot>
+  </table></div>
+  <p class="hint">Importi in euro. Tocca una riga per segnare o correggere il giorno; ✎ = c'è una nota. La % della mattina è sul totale dei giorni con il parziale segnato.</p>`
+  : '<p class="muted">Nessun giorno da mostrare.</p>';
+}
+
+/* Calendario: tre livelli come Google Calendar (mese → anno → anni).
+   Si rimpicciolisce toccando il titolo o pizzicando con due dita; si ingrandisce toccando un mese/anno. */
+let calLevel = 'm', yearsStart = new Date().getFullYear() - 6;
+try{ const z = JSON.parse(ssGet('bar-zoom') || 'null'); if(z){ if(['m','y','a'].includes(z.l)) calLevel = z.l; if(Number.isInteger(z.ys)) yearsStart = z.ys; } }catch(e){}
+
+function renderCal(){
+  if(calLevel === 'm') renderCalMonth();
+  else if(calLevel === 'y') renderCalYear();
+  else renderCalYears();
+}
+function renderCalMonth(){
+  const [y, mo] = month.split('-').map(Number), today = TODAY();
+  const lead = (new Date(y, mo - 1, 1).getDay() + 6) % 7;
+  const wk = ['lun','mar','mer','gio','ven','sab','dom'].map(w => `<span>${w}</span>`).join('');
+  let cells = '<span class="cell out"></span>'.repeat(lead);
+  for(const d of monthDays(month)){
+    const g = G[d] || {}, dt = parse(d), wd = dt.getDay(), fut = d > today;
+    const t = tot(g), i1 = g.incasso1 || 0, i2 = g.incasso2 || 0;
+    const bar = hasInc(g) && t > 0 ? `<span class="s"><i style="width:${i1 / t * 100}%;background:var(--i1)"></i><i style="width:${i2 / t * 100}%;background:var(--i2)"></i></span>` : '';
+    cells += `<button type="button" class="cell${wd === 0 || wd === 6 ? ' we' : ''}${d === today ? ' today' : ''}${fut ? ' fut' : ''}" data-d="${d}"${fut ? ' disabled' : ''}>
+      <span class="n">${dt.getDate()}</span>${(g.note || '').trim() ? '<span class="nt"></span>' : ''}
+      ${g.mattina != null ? `<span class="am">☀ ${fNum0.format(g.mattina)}</span>` : ''}
+      ${hasInc(g) ? `<span class="t">${fNum0.format(t)}</span>${bar}` : ''}
+    </button>`;
+  }
+  $('v-calendario').innerHTML = `<div class="wk">${wk}</div><div class="mgrid">${cells}</div>
+    <p class="hint"><span class="dot" style="background:var(--i1)"></span> Incasso1 · <span class="dot" style="background:var(--i2)"></span> Incasso2 · ☀ mattina · <span class="dot" style="background:var(--am)"></span> nota. Tocca il mese in alto (o pizzica con due dita) per vedere l'anno.</p>`;
+}
+function renderCalYear(){
+  const y = +month.slice(0, 4), today = TODAY(), curM = today.slice(0, 7);
+  const fM = new Intl.DateTimeFormat('it-IT', { month:'long' });
+  // Intensità del colore = incasso del giorno rispetto al giorno migliore dell'anno.
+  const keys = Object.keys(G).filter(d => d.startsWith(y + '-') && hasInc(G[d]));
+  const max = Math.max(1, ...keys.map(d => tot(G[d])));
+  let h = '', anno = 0;
+  for(let mi = 0; mi < 12; mi++){
+    const m = `${y}-${pad(mi + 1)}`, lead = (new Date(y, mi, 1).getDay() + 6) % 7;
+    let cells = '<span></span>'.repeat(lead), mt = 0;
+    for(const d of monthDays(m)){
+      const g = G[d];
+      let st = '';
+      if(hasInc(g)){ const t = tot(g); mt += t; st = ` style="background:color-mix(in srgb,var(--i1) ${Math.round(15 + 65 * t / max)}%,transparent)"`; }
+      cells += `<span class="md${hasInc(g) ? ' on' : ''}${d === today ? ' t' : ''}"${st}>${+d.slice(8)}</span>`;
+    }
+    anno += mt;
+    const fut = m > curM;
+    h += `<div role="button" tabindex="0" class="mese${m === curM ? ' cur' : ''}" data-m="${m}"${fut ? ' style="opacity:.45"' : ''}><h4>${fM.format(new Date(y, mi, 1))}<span>${mt ? fEur0.format(mt) : ''}</span></h4><div class="mg">${cells}</div></div>`;
+  }
+  $('v-calendario').innerHTML = `<div class="yr">${h}</div>
+    <div class="heat">Meno <i style="background:color-mix(in srgb,var(--i1) 15%,transparent)"></i><i style="background:color-mix(in srgb,var(--i1) 45%,transparent)"></i><i style="background:color-mix(in srgb,var(--i1) 80%,transparent)"></i> Più · Totale ${y}: <b class="num" style="color:var(--fg)">${fEur0.format(anno)}</b></div>
+    <p class="hint">Tocca un mese per aprirlo. Tocca l'anno in alto (o pizzica) per vedere gli anni.</p>`;
+}
+function renderCalYears(){
+  const now = new Date().getFullYear();
+  const perAnno = {};
+  for(const [d, g] of Object.entries(G)) if(hasInc(g)) perAnno[d.slice(0, 4)] = (perAnno[d.slice(0, 4)] || 0) + tot(g);
+  let h = '';
+  for(let y = yearsStart; y < yearsStart + 12; y++)
+    h += `<div role="button" tabindex="0" class="ybox${y === now ? ' cur' : ''}${y > now ? ' fut' : ''}" data-y="${y}"><b>${y}</b><span>${perAnno[y] ? fEur0.format(perAnno[y]) : '&nbsp;'}</span></div>`;
+  $('v-calendario').innerHTML = `<div class="yrs">${h}</div><p class="hint">Tocca un anno per vedere i suoi mesi.</p>`;
+}
+const clampMonth = m => m > TODAY().slice(0, 7) ? TODAY().slice(0, 7) : m;
+function zoomOut(){
+  if(view !== 'calendario' || calLevel === 'a') return;
+  if(calLevel === 'm') calLevel = 'y';
+  else { calLevel = 'a'; const y = +month.slice(0, 4); if(y < yearsStart || y > yearsStart + 11) yearsStart = y - 6; }
+  render();
+}
+function zoomIn(el){
+  if(calLevel === 'a'){ const y = el?.dataset.y ? +el.dataset.y : +month.slice(0, 4); if(y > new Date().getFullYear()) return; month = clampMonth(`${y}-${month.slice(5)}`); calLevel = 'y'; }
+  else if(calLevel === 'y'){ if(el?.dataset.m){ if(el.dataset.m > TODAY().slice(0, 7)) return; month = el.dataset.m; } calLevel = 'm'; }
+  ssSet('bar-mese', month); render();
+}
+
+/* Riepilogo: tabella con tutte le mensilità dell'anno del mese scelto. */
+function tabellaMesi(){
+  const y = +month.slice(0, 4), curM = TODAY().slice(0, 7);
+  const fM = new Intl.DateTimeFormat('it-IT', { month:'short' });
+  const mesi = [];
+  for(let mi = 0; mi < 12; mi++){ const m = `${y}-${pad(mi + 1)}`; if(m <= curM) mesi.push([m, stats(m)]); }
+  if(!mesi.some(([, s]) => s.incDays)) return '';
+  const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0 };
+  const rows = mesi.map(([m, s]) => {
+    A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays;
+    const sp = s.am + s.pm;
+    if(!s.incDays) return `<tr data-m="${m}"${m === month ? ' class="today"' : ''}><td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td><td class="vuoto" colspan="6">–</td></tr>`;
+    return `<tr tabindex="0" data-m="${m}"${m === month ? ' class="today"' : ''}>
+      <td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td>
+      <td class="am">${num(s.am)}<small class="pc">${s.splitDays ? pct(s.am, sp) : ''}</small></td>
+      <td>${num(s.pm)}<small class="pc">${s.splitDays ? pct(s.pm, sp) : ''}</small></td>
+      <td>${num(s.i1)}<small class="pc">${pct(s.i1, s.tot)}</small></td>
+      <td>${num(s.i2)}<small class="pc">${pct(s.i2, s.tot)}</small></td>
+      <td class="tot">${num(s.tot)}<small class="pc">${s.incDays} gg · media ${fNum0.format(s.media)}</small></td>
+    </tr>`;
+  }).join('');
+  const sp = A.am + A.pm;
+  return `<div class="card" style="padding:0;overflow:hidden">
+    <h3 style="padding:14px 16px 0">Tutti i mesi del ${y}</h3>
+    <div style="overflow-x:auto"><table class="xl mesi">
+      <colgroup><col class="c-day"><col><col><col><col><col></colgroup>
+      <thead><tr><th>Mese</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>${y}</td>
+        <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
+        <td>${num(A.pm)}<small class="pc">${sp ? pct(A.pm, sp) : ''}</small></td>
+        <td>${num(A.i1)}<small class="pc">${pct(A.i1, A.tot)}</small></td>
+        <td>${num(A.i2)}<small class="pc">${pct(A.i2, A.tot)}</small></td>
+        <td>${num(A.tot)}<small class="pc">${A.giorni} gg · media ${fNum0.format(A.giorni ? A.tot / A.giorni : 0)}</small></td></tr></tfoot>
+    </table></div>
+    <p class="hint" style="padding:0 16px 14px">Tocca un mese per vederne il riepilogo. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale del mese.</p>
+  </div>`;
 }
 
 function renderRiepilogo(){
   const s = stats(month), n = monthDays(month).length;
   if(!s.incDays){
-    $('v-riepilogo').innerHTML = '<div class="card"><p class="muted" style="margin:0">Nessun incasso segnato in questo mese.</p></div>';
+    $('v-riepilogo').innerHTML = '<div class="cards"><div class="card"><p class="muted" style="margin:0">Nessun incasso segnato in questo mese.</p></div>' + tabellaMesi() + '</div>';
     return;
   }
   const dayTxt = d => fLong.format(parse(d));
@@ -437,6 +631,7 @@ function renderRiepilogo(){
     </div>
 
     ${notes.length ? `<div class="card"><h3>Note del mese</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${fWd.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
+    ${tabellaMesi()}
   </div>`;
 }
 
@@ -494,14 +689,73 @@ $('fDel').onclick = async () => {
 };
 
 /* ---------- navigazione ---------- */
-$('v-giorni').addEventListener('click', e => { const b = e.target.closest('.day'); if(b) openDay(b.dataset.d); });
+$('v-giorni').addEventListener('click', e => { const r = e.target.closest('tr[data-d]'); if(r) openDay(r.dataset.d); });
+$('v-giorni').addEventListener('keydown', e => { const r = e.target.closest('tr[data-d]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openDay(r.dataset.d); } });
+$('v-riepilogo').addEventListener('click', e => { const r = e.target.closest('tr[data-m]'); if(r && r.dataset.m !== month) setMonth(r.dataset.m); });
 const setMonth = m => { month = m; ssSet('bar-mese', m); render(); };
-$('prev').onclick = () => setMonth(shiftMonth(month, -1));
-$('next').onclick = () => setMonth(shiftMonth(month, 1));
-$('oggi').onclick = () => setMonth(TODAY().slice(0, 7));
+// Frecce: nel calendario spostano di un mese, di un anno o di 12 anni a seconda dello zoom.
+function sposta(k){
+  const lvl = view === 'calendario' ? calLevel : 'm';
+  if(lvl === 'm') setMonth(shiftMonth(month, k));
+  else if(lvl === 'y') setMonth(clampMonth(shiftMonth(month, 12 * k)));
+  else { yearsStart += 12 * k; render(); }
+}
+$('prev').onclick = () => sposta(-1);
+$('next').onclick = () => { if(!$('next').disabled) sposta(1); };
+$('oggi').onclick = () => { calLevel = 'm'; setMonth(TODAY().slice(0, 7)); };
+$('mTitle').onclick = zoomOut;
 const setView = v => { view = v; ssSet('bar-vista', v); render(); window.scrollTo(0, 0); };
 $('tab-giorni').onclick = () => setView('giorni');
+$('tab-calendario').onclick = () => setView('calendario');
 $('tab-riepilogo').onclick = () => setView('riepilogo');
+
+// Calendario: tocco su giorno/mese/anno, pizzico con due dita per lo zoom, scorrimento laterale per cambiare periodo.
+(() => {
+  const c = $('v-calendario');
+  let pinch = null, swipe = null, stopClick = 0;
+  c.addEventListener('click', e => {
+    if(Date.now() - stopClick < 400) return;
+    const day = e.target.closest('.cell[data-d]');
+    if(day && !day.disabled) return openDay(day.dataset.d);
+    const box = e.target.closest('[data-m],[data-y]');
+    if(box) zoomIn(box);
+  });
+  c.addEventListener('keydown', e => {
+    const box = e.target.closest('[data-m],[data-y]');
+    if(box && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); zoomIn(box); }
+  });
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  c.addEventListener('touchstart', e => {
+    if(e.touches.length === 2){ pinch = { d0: dist(e.touches), d: dist(e.touches), x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 }; swipe = null; }
+    else if(e.touches.length === 1 && !pinch) swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: true });
+  c.addEventListener('touchmove', e => { if(pinch && e.touches.length === 2){ e.preventDefault(); pinch.d = dist(e.touches); } }, { passive: false });
+  c.addEventListener('touchend', e => {
+    if(pinch && e.touches.length < 2){
+      const r = pinch.d / pinch.d0, p = pinch; pinch = null; stopClick = Date.now();
+      if(r < 0.75) zoomOut();
+      else if(r > 1.33 && calLevel !== 'm') zoomIn(document.elementFromPoint(p.x, p.y)?.closest('[data-m],[data-y]'));
+      return;
+    }
+    if(swipe && e.changedTouches.length){
+      const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+      if(Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy) && Date.now() - swipe.t < 700){
+        stopClick = Date.now();
+        if(dx < 0 && $('next').disabled) return;
+        sposta(dx < 0 ? 1 : -1);
+      }
+      swipe = null;
+    }
+  });
+  // Rotella con Ctrl (o pizzico sul touchpad) sul PC: rimpicciolisce/ingrandisce.
+  c.addEventListener('wheel', e => {
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    if(Date.now() - stopClick < 500) return;
+    stopClick = Date.now();
+    if(e.deltaY > 0) zoomOut(); else if(calLevel !== 'm') zoomIn(document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-m],[data-y]'));
+  }, { passive: false });
+})();
 $('acct').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
 document.addEventListener('click', e => { if(!$('menu').hidden && !$('menu').contains(e.target)) $('menu').hidden = true; });
 $('logoutBtn').onclick = () => { $('menu').hidden = true; backend.logout(); };
