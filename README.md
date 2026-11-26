@@ -4,6 +4,7 @@ App per telefono e PC con gli incassi giornalieri della società.
 
 - **Ogni giorno**: Incasso1 (fiscale), di cui il parziale della mattina, Incasso2 (altra attività) e note. Il parziale mattina è sul totale dei due incassi; il pomeriggio è calcolato: Incasso1 + Incasso2 − mattina.
 - **Spese (Incasso2)**: giorno, tipologia (Spesa, Frutta/verdura, Pasticceria, Ghiaccio, Giornali, Pasti/staff, Stipendio, Varie; rinominabili), nome della spesa e importo; totali per tipologia e Incasso2 al netto delle spese. Collezioni `bar_spese` e `bar_impostazioni/tipologie`.
+- **Stipendi**: busta paga del mese con stipendio 1 (attività di Incasso1) e stipendio 2 (Incasso2) per ogni dipendente e per i soci Jacopo Bugli e Claudio Manenti, più l'F24 del mese. Anno contabile da dicembre a novembre. "Riepilogo stipendi" (solo dipendenti): totali, per persona con confronto con l'anno prima, grafico mese per mese, tabella. Collezioni `bar_stipendi` e `bar_persone`.
 - **Riepilogo del mese**: totale, Incasso1 e Incasso2 in euro e in %, mattina e pomeriggio in euro e in %, disparità in euro, in % rispetto all'altra fascia e in punti di quota; giorno migliore e più basso, medie, note del mese.
 
 Accesso con Google, solo per i soci (lista `socio()` nelle regole). Dati in Firestore (progetto `le-mie-note-d18dd`), collezione `bar_giorni`: un documento per giorno con id `AAAA-MM-GG`.

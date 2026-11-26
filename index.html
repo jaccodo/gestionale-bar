@@ -56,7 +56,9 @@ header .wrap{padding-block:14px 0;display:flex;flex-direction:column;gap:10px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 h1{font-family:var(--f-display);font-weight:700;font-size:1.45rem;margin:0;letter-spacing:-.01em}
 .acct{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:var(--band-fg);font-weight:700;cursor:pointer;display:grid;place-items:center}
-.tabs{display:flex;gap:4px;margin-inline:-4px}
+.tabs{display:flex;gap:2px;margin-inline:-4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+@media (max-width:480px){.tab{padding:10px 8px 12px;font-size:.86rem}}
 .tab{flex:none;border:0;background:transparent;color:var(--band-muted);font-weight:600;font-size:.92rem;padding:10px 12px 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tab[aria-selected="true"]{color:var(--band-fg);border-bottom-color:var(--band-fg)}
 .tab:focus-visible,.acct:focus-visible{outline:2px solid var(--band-fg);outline-offset:-2px}
@@ -201,6 +203,64 @@ main{touch-action:pan-x pan-y}
 .sugg button{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:4px 10px;font-size:.8rem;cursor:pointer;color:var(--muted)}
 .sugg button:hover{color:var(--fg);border-color:var(--muted)}
 
+/* stipendi */
+.viz{--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a;--c4:#eda100;--c5:#e87ba4;--c6:#008300;--c7:#6250d6;--c8:#e34948;--c0:#8b8f98}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .viz{--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c6:#0ca30c;--c7:#9085e9;--c8:#e66767;--c0:#7c818c}}
+:root[data-theme="dark"] .viz{--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c6:#0ca30c;--c7:#9085e9;--c8:#e66767;--c0:#7c818c}
+.st-sub{font-size:.82rem;color:var(--muted);margin:-6px 0 12px}
+.rs-btn{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--accent);color:var(--on-accent);border-radius:14px;padding:13px 16px;font-weight:700;margin:0 0 12px}
+.rs-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rs-btn small{font-weight:600;opacity:.75}
+.rs-btn::after{content:"›";font-size:1.4rem;line-height:1}
+.strip4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.strip4 > div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-width:0}
+.strip4 .l{font-size:.72rem;color:var(--muted);font-weight:600}
+.strip4 .v{font-weight:700;font-size:.98rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.strip4 > div.big4{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.strip4 > div.big4 .l{color:inherit;opacity:.75}
+@media (max-width:480px){.strip4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.xl tr.sez td{background:var(--soft);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-block:6px;text-align:left;cursor:default}
+.xl tr.subt td{font-weight:700;border-top:1px solid var(--line)}
+.xl.st col.c-nome{width:auto}
+.xl.st td.nome{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xl.st td.nome .dot{margin-right:6px;vertical-align:1px}
+.xl.st td.nome small{color:var(--muted);font-size:.7rem;margin-left:4px}
+.xl.st .off td.nome{color:var(--muted)}
+.st-actions{display:flex;gap:8px;margin-top:12px}
+.st-actions .btn{height:40px;padding:0 14px}
+.rs-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.rs-head #rsBack{flex-basis:100%;justify-self:start;width:max-content}
+.rs-head h2{font-family:var(--f-display);font-weight:600;font-size:1.2rem;margin:0;flex:1;min-width:0}
+.rs-head h2 small{display:block;font-family:var(--f-body);font-size:.74rem;font-weight:600;color:var(--muted)}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0;padding-top:0}
+.prow .pn{font-weight:700;display:flex;align-items:center;gap:7px;min-width:0}
+.prow .pn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .pv{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.prow .pb{grid-column:1 / -1;height:8px;border-radius:999px;background:var(--soft);overflow:hidden;display:flex}
+.prow .pb i{display:block;height:100%}
+.prow .pd{grid-column:1 / -1;font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:2px 12px}
+.up{color:var(--good)} .down{color:var(--bad)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .ax{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+.chart .hit{fill:transparent;cursor:pointer}
+.chart .hit:hover,.chart .hit.on{fill:color-mix(in srgb,var(--fg) 6%,transparent)}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.78rem;box-shadow:0 8px 24px -10px rgba(0,0,0,.35);min-width:160px;font-variant-numeric:tabular-nums}
+.tip b{display:block;margin-bottom:4px;text-transform:capitalize}
+.tip div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tip div span{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.tip .tt{border-top:1px solid var(--line);margin-top:4px;padding-top:4px;font-weight:700}
+.legend2{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted);margin-top:10px}
+.legend2 span{display:inline-flex;align-items:center;gap:6px}
+.xl.hm td.c{position:relative}
+.xl.hm{min-width:760px;font-size:.8rem}
+.xl.hm col.c-nome{width:120px}
+.xl.hm th,.xl.hm td{padding:7px 6px}
+.chk{display:flex;align-items:center;gap:8px;font-size:.86rem;color:var(--muted);white-space:nowrap}
+.prs-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;margin-bottom:8px}
+
 /* riepilogo */
 .cards{display:grid;gap:12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
@@ -285,6 +345,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
       <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
       <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button">Spese</button>
+      <button class="tab" role="tab" id="tab-stipendi" aria-selected="false" type="button">Stipendi</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
     </nav>
   </div>
@@ -297,7 +358,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
 <main>
   <div class="wrap">
     <div id="notice"></div>
-    <div class="monthbar">
+    <div class="monthbar" id="monthbar">
       <h2><button class="mlbl" id="mTitle" type="button"></button></h2>
       <div class="nav">
         <button class="icon-btn" id="prev" type="button" aria-label="Mese precedente">‹</button>
@@ -308,6 +369,8 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <section id="v-giorni"></section>
     <section id="v-calendario" class="cal" hidden></section>
     <section id="v-spese" hidden></section>
+    <section id="v-stipendi" class="viz" hidden></section>
+    <section id="v-rs" class="viz" hidden></section>
     <section id="v-riepilogo" hidden></section>
   </div>
 </main>
@@ -373,6 +436,38 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
         <button class="btn" id="spSave" type="submit">Salva</button>
       </div>
     </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSt">
+  <form class="sheet" id="stForm" method="dialog" novalidate>
+    <h2 id="stTitle" style="text-transform:none"></h2>
+    <p class="sub" id="stSub" style="margin:-8px 0 14px"></p>
+    <div id="stFields"></div>
+    <div class="calc" id="stCalc"></div>
+    <p class="err" id="stErr" hidden></p>
+    <div class="actions">
+      <button class="btn danger" id="stDel" type="button">Svuota</button>
+      <div class="r">
+        <button class="btn ghost" id="stCancel" type="button">Annulla</button>
+        <button class="btn" id="stSave" type="submit">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgPers">
+  <form class="sheet" id="prsForm" method="dialog" novalidate>
+    <h2 style="text-transform:none">Dipendenti</h2>
+    <p class="sub" style="margin:-8px 0 14px">Chi è "in servizio" compare ogni mese nella busta paga. Chi non lo è più resta nello storico.</p>
+    <div id="prsRows"></div>
+    <div class="field" style="margin-top:12px">
+      <label for="prsNew">Aggiungi dipendente</label>
+      <div style="display:flex;gap:8px"><input class="txt" id="prsNew" maxlength="40" placeholder="Nome e cognome"><button class="btn" id="prsAdd" type="button">Aggiungi</button></div>
+    </div>
+    <button class="btn ghost" id="prsImport" type="button" style="width:100%;margin-bottom:12px">Importa i nomi dall'app Ferie</button>
+    <p class="err" id="prsErr" hidden></p>
+    <div class="actions"><span></span><div class="r"><button class="btn" id="prsClose" type="button">Fatto</button></div></div>
   </form>
 </dialog>
 
@@ -455,6 +550,36 @@ const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
 /* ---------- stato ---------- */
 // Spese di Incasso2: [{ id, data:'AAAA-MM-GG', tipo:'a'…'g', nome, importo }]
 let SP = [];
+// Stipendi. Persone: dipendenti in bar_persone { nome, attivo }; i due soci sono fissi.
+// ST: { 'AAAA-MM_persona': { mese, persona, s1, s2 } }; F24: persona 'f24' con { importo }.
+let PERS = [], ST = {}, rsOpen = false, rsAnno = null;
+const SOCI = [{ id:'jacopo', nome:'Jacopo Bugli', socio:true }, { id:'claudio', nome:'Claudio Manenti', socio:true }];
+// Anno contabile: parte dalla busta paga di dicembre dell'anno prima (dic 2025 – nov 2026 = anno 2026).
+const annoCont = m => m.slice(5) === '12' ? +m.slice(0, 4) + 1 : +m.slice(0, 4);
+const mesiAC = A => [`${A - 1}-12`, ...Array.from({ length: 11 }, (_, i) => `${A}-${pad(i + 1)}`)];
+const etAC = m => m.slice(5) === '12' ? 'Dic ' + m.slice(2, 4) : cap(fMs.format(parse(m + '-01')).replace('.', ''));
+const stRec = (m, p) => ST[`${m}_${p}`];
+const stTot = r => r ? (r.persona === 'f24' ? (r.importo || 0) : (r.s1 || 0) + (r.s2 || 0)) : 0;
+// Colore fisso per dipendente (ordine di inserimento, mai per classifica); dal 9° in poi grigio.
+const colP = id => { const i = PERS.findIndex(p => p.id === id); return i >= 0 && i < 8 ? `var(--c${i + 1})` : 'var(--c0)'; };
+const nomeP = id => (SOCI.find(s => s.id === id) || PERS.find(p => p.id === id) || {}).nome || 'Dipendente rimosso';
+/* Totali di un insieme di mesi: dipendenti, soci, F24. */
+function stStats(mesi){
+  const o = { d1: 0, d2: 0, s1: 0, s2: 0, f24: 0, perP: {}, perM: {} };
+  for(const m of mesi){
+    const pm = o.perM[m] = { d: 0, s: 0, f24: 0, byP: {} };
+    for(const r of Object.values(ST)){
+      if(r.mese !== m) continue;
+      if(r.persona === 'f24'){ o.f24 += r.importo || 0; pm.f24 += r.importo || 0; continue; }
+      const t = (r.s1 || 0) + (r.s2 || 0);
+      if(SOCI.some(s => s.id === r.persona)){ o.s1 += r.s1 || 0; o.s2 += r.s2 || 0; pm.s += t; continue; }
+      o.d1 += r.s1 || 0; o.d2 += r.s2 || 0; pm.d += t; pm.byP[r.persona] = t;
+      const p = o.perP[r.persona] ||= { s1: 0, s2: 0, mesi: 0 }; p.s1 += r.s1 || 0; p.s2 += r.s2 || 0; if(t) p.mesi++;
+    }
+  }
+  o.t1 = o.d1 + o.s1; o.t2 = o.d2 + o.s2; o.tot = o.t1 + o.t2; o.totF = o.tot + o.f24;
+  return o;
+}
 // Tipologie a…h: nomi di base in TIPI_BASE, rinominabili da Spese › Tipologie.
 const TIPI_ID = ['a','b','c','d','e','f','g','h'];
 // Tipologie scelte dall'utente il 2026-11-26. Si possono rinominare da Spese › Tipologie (il nome salvato vince).
@@ -489,7 +614,7 @@ function speseMese(m){
 }
 let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
 let me = null, backend = null;
-let view = ['giorni','calendario','spese','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
+let view = ['giorni','calendario','spese','stipendi','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
 let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
 
 const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
@@ -537,13 +662,16 @@ function render(){
   $('mTitle').classList.toggle('zoom', lvl !== 'a');
   $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
   $('oggi').hidden = lvl === 'm' && month === cur;
-  for(const v of ['giorni','calendario','spese','riepilogo']){
+  for(const v of ['giorni','calendario','spese','stipendi','riepilogo']){
     $('tab-' + v).setAttribute('aria-selected', view === v);
-    $('v-' + v).hidden = view !== v;
+    $('v-' + v).hidden = view !== v || (v === 'stipendi' && rsOpen);
   }
+  $('v-rs').hidden = !(view === 'stipendi' && rsOpen);
+  $('monthbar').hidden = view === 'stipendi' && rsOpen;
   if(view === 'giorni') renderGiorni();
   else if(view === 'calendario') renderCal();
   else if(view === 'spese') renderSpese();
+  else if(view === 'stipendi') rsOpen ? renderRS() : renderStipendi();
   else renderRiepilogo();
 }
 
@@ -794,6 +922,267 @@ function renderRiepilogo(){
   </div>`;
 }
 
+/* ---------- stipendi ---------- */
+function renderStipendi(){
+  $('monthbar').hidden = false;
+  if(calLevel === 'm') return renderStMese();
+  const A = annoCont(month);
+  if(calLevel === 'y') $('mTitle').textContent = 'Anno ' + A;
+  const anni = calLevel === 'a';
+  const righe = anni ? Array.from({ length: 12 }, (_, i) => yearsStart + i).filter(y => mesiAC(y).some(m => Object.values(ST).some(r => r.mese === m)))
+                     : mesiAC(A).filter(m => m <= TODAY().slice(0, 7));
+  let T = { t1: 0, t2: 0, f24: 0, tot: 0 };
+  const rows = righe.map(k => {
+    const s = stStats(anni ? mesiAC(k) : [k]);
+    T.t1 += s.t1; T.t2 += s.t2; T.f24 += s.f24; T.tot += s.totF;
+    const vuoto = !s.totF;
+    return `<tr tabindex="0" ${anni ? `data-y="${k}"` : `data-m="${k}"`}${(anni ? k === A : k === month) ? ' class="today"' : ''}>
+      <td class="day"><b>${anni ? k : etAC(k)}</b></td>
+      ${vuoto ? '<td class="vuoto" colspan="4">–</td>' : `<td>${num(s.t1)}</td><td>${num(s.t2)}</td><td>${num(s.f24)}</td><td class="tot">${num(s.totF)}</td>`}
+    </tr>`;
+  }).join('');
+  $('v-stipendi').innerHTML = `
+    ${anni ? '' : `<p class="st-sub">Anno contabile ${A}: buste paga da dicembre ${A - 1} a novembre ${A}.</p>`}
+    <button class="rs-btn" id="rsOpen" type="button"><span>Riepilogo stipendi <small>· solo dipendenti</small></span></button>
+    ${rows ? `<div class="sheetwrap"><table class="xl">
+      <colgroup><col class="c-day"><col><col><col><col></colgroup>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>Stip. 1</th><th>Stip. 2</th><th>F24</th><th>Totale</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>${anni ? 'Tot.' : A}</td><td>${num(T.t1)}</td><td>${num(T.t2)}</td><td>${num(T.f24)}</td><td>${num(T.tot)}</td></tr></tfoot>
+    </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuno stipendio segnato.</p></div>'}
+    <p class="hint">Stipendi di dipendenti e soci, con F24. Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprire la busta paga; tocca il titolo (o pizzica) per vedere gli anni'}.</p>`;
+}
+
+function renderStMese(){
+  const m = month, A = annoCont(m), s = stStats([m]);
+  const attivi = PERS.filter(p => p.attivo !== false || stRec(m, p.id));
+  const riga = (p, socio) => {
+    const r = stRec(m, p.id) || {};
+    const has = r.s1 != null || r.s2 != null;
+    return `<tr tabindex="0" data-st="${p.id}"${p.attivo === false ? ' class="off"' : ''}>
+      <td class="nome">${socio ? '' : `<span class="dot" style="background:${colP(p.id)}"></span>`}${esc(p.nome)}${p.attivo === false ? '<small>non in servizio</small>' : ''}</td>
+      ${has ? `<td>${r.s1 != null ? num(r.s1) : '–'}</td><td>${r.s2 != null ? num(r.s2) : '–'}</td><td class="tot">${num(stTot(r))}</td>` : '<td class="vuoto">–</td><td class="vuoto">–</td><td class="vuoto tot">–</td>'}
+    </tr>`;
+  };
+  const f = stRec(m, 'f24');
+  $('v-stipendi').innerHTML = `
+    <p class="st-sub">Busta paga di ${fMonth.format(parse(m + '-01'))} · anno contabile ${A} (dic ${A - 1} – nov ${A})</p>
+    <div class="strip4">
+      <div><div class="l">Stipendio 1</div><div class="v">${eur(s.t1)}</div></div>
+      <div><div class="l">Stipendio 2</div><div class="v">${eur(s.t2)}</div></div>
+      <div><div class="l">F24</div><div class="v">${eur(s.f24)}</div></div>
+      <div class="big4"><div class="l">Totale 1 + 2 + F24</div><div class="v">${eur(s.totF)}</div></div>
+    </div>
+    <button class="rs-btn" id="rsOpen" type="button"><span>Riepilogo stipendi <small>· solo dipendenti</small></span></button>
+    <div class="sheetwrap"><table class="xl st">
+      <colgroup><col class="c-nome"><col style="width:22%"><col style="width:22%"><col style="width:22%"></colgroup>
+      <thead><tr><th>Persona</th><th>Stip. 1</th><th>Stip. 2</th><th>Totale</th></tr></thead>
+      <tbody>
+        <tr class="sez"><td colspan="4">Dipendenti</td></tr>
+        ${attivi.length ? attivi.map(p => riga(p)).join('') : '<tr class="sez"><td colspan="4" style="text-transform:none;letter-spacing:0;font-weight:500">Nessun dipendente: aggiungili con "Dipendenti" qui sotto.</td></tr>'}
+        <tr class="subt"><td class="nome">Totale dipendenti</td><td>${num(s.d1)}</td><td>${num(s.d2)}</td><td>${num(s.d1 + s.d2)}</td></tr>
+        <tr class="sez"><td colspan="4">Soci · compenso</td></tr>
+        ${SOCI.map(p => riga(p, true)).join('')}
+        <tr class="subt"><td class="nome">Totale soci</td><td>${num(s.s1)}</td><td>${num(s.s2)}</td><td>${num(s.s1 + s.s2)}</td></tr>
+        <tr class="sez"><td colspan="4">Tasse e contributi</td></tr>
+        <tr tabindex="0" data-st="f24"><td class="nome">F24 del mese</td><td class="vuoto"></td><td class="vuoto"></td>${f ? `<td class="tot">${num(f.importo)}</td>` : '<td class="vuoto tot">–</td>'}</tr>
+      </tbody>
+      <tfoot>
+        <tr><td>Stipendi 1 + 2</td><td>${num(s.t1)}</td><td>${num(s.t2)}</td><td>${num(s.tot)}</td></tr>
+        <tr><td>Con F24</td><td></td><td></td><td>${num(s.totF)}</td></tr>
+      </tfoot>
+    </table></div>
+    <div class="st-actions"><button class="btn ghost" id="prsOpen" type="button">Dipendenti</button></div>
+    <p class="hint">Tocca una riga per segnare stipendio 1 (attività di Incasso1) e stipendio 2 (attività di Incasso2). Tocca il mese in alto (o pizzica) per vedere l'anno contabile.</p>`;
+}
+
+/* Riepilogo stipendi: solo dipendenti, anno contabile (dic–nov). */
+function renderRS(){
+  $('monthbar').hidden = true;
+  const A = rsAnno, mesi = mesiAC(A).filter(m => m <= TODAY().slice(0, 7));
+  const s = stStats(mesi), prev = stStats(mesiAC(A - 1));
+  const tot = s.d1 + s.d2, totPrev = prev.d1 + prev.d2;
+  const ids = Object.keys(s.perP).sort((a, b) => (s.perP[b].s1 + s.perP[b].s2) - (s.perP[a].s1 + s.perP[a].s2));
+  const maxP = Math.max(1, ...ids.map(id => s.perP[id].s1 + s.perP[id].s2));
+  const mesiPagati = mesi.filter(m => s.perM[m].d > 0);
+  const delta = (a, b) => b ? `<span class="${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${fPct.format(Math.abs(a - b) / b * 100)}%</span>` : '';
+  const prows = ids.map(id => {
+    const p = s.perP[id], t = p.s1 + p.s2, pp = prev.perP[id], tp = pp ? pp.s1 + pp.s2 : 0;
+    return `<div class="prow">
+      <div class="pn"><span class="dot" style="background:${colP(id)}"></span><span>${esc(nomeP(id))}</span></div>
+      <div class="pv">${eur(t)}</div>
+      <div class="pb"><i style="width:${p.s1 / maxP * 100}%;background:${colP(id)}"></i><i style="width:${p.s2 / maxP * 100}%;background:color-mix(in srgb,${colP(id)} 45%,transparent)"></i></div>
+      <div class="pd"><span>${pct(t, tot)} del totale</span><span>Stip. 1 ${fEur0.format(p.s1)} · Stip. 2 ${fEur0.format(p.s2)}</span><span>${p.mesi} ${p.mesi === 1 ? 'mese' : 'mesi'} · media ${fEur0.format(p.mesi ? t / p.mesi : 0)}/mese</span>${tp ? `<span>${A - 1}: ${fEur0.format(tp)} ${delta(t, tp)}</span>` : '<span>nuovo quest\'anno</span>'}</div>
+    </div>`;
+  }).join('');
+  // Tabella persona × mese
+  const hmRows = ids.map(id => `<tr><td class="nome"><span class="dot" style="background:${colP(id)}"></span>${esc(nomeP(id))}</td>${mesi.map(m => { const r = stRec(m, id); const t = stTot(r); return t ? `<td>${fNum0.format(t)}</td>` : '<td class="vuoto">–</td>'; }).join('')}<td class="tot">${fNum0.format(s.perP[id].s1 + s.perP[id].s2)}</td></tr>`).join('');
+  $('v-rs').innerHTML = `
+    <div class="rs-head">
+      <button class="txt-btn" id="rsBack" type="button">‹ Stipendi</button>
+      <h2>Riepilogo stipendi ${A}<small>Solo dipendenti · buste paga dic ${A - 1} – nov ${A}</small></h2>
+      <div class="nav"><button class="icon-btn" id="rsPrev" type="button" aria-label="Anno precedente">‹</button><button class="icon-btn" id="rsNext" type="button" aria-label="Anno successivo"${A >= annoCont(TODAY().slice(0, 7)) ? ' disabled' : ''}>›</button></div>
+    </div>
+    ${!ids.length ? '<div class="card"><p class="muted" style="margin:0">Nessuno stipendio di dipendenti in questo anno contabile.</p></div>' : `
+    <div class="cards">
+      <div class="card">
+        <h3>Totale dipendenti</h3>
+        <div class="big num">${eur(tot)}</div>
+        <div class="sub">${ids.length} ${ids.length === 1 ? 'dipendente' : 'dipendenti'} · ${mesiPagati.length} ${mesiPagati.length === 1 ? 'mese' : 'mesi'} con buste paga${totPrev ? ` · ${A - 1}: ${fEur0.format(totPrev)} ${delta(tot, totPrev)}` : ''}</div>
+        <div class="kpis">
+          <div><div class="l">Stipendio 1</div><div class="v num">${eur(s.d1)}</div><div class="sub" style="margin:0;font-size:.74rem">${pct(s.d1, tot)}</div></div>
+          <div><div class="l">Stipendio 2</div><div class="v num">${eur(s.d2)}</div><div class="sub" style="margin:0;font-size:.74rem">${pct(s.d2, tot)}</div></div>
+          <div><div class="l">Media al mese</div><div class="v num">${eur(mesiPagati.length ? tot / mesiPagati.length : 0)}</div><div class="sub" style="margin:0;font-size:.74rem">per tutti i dipendenti</div></div>
+        </div>
+      </div>
+      <div class="card"><h3>Quanto ha preso ognuno</h3>${prows}
+        <div class="legend2"><span><i class="dot" style="background:var(--c1)"></i>barra piena = stipendio 1</span><span><i class="dot" style="background:color-mix(in srgb,var(--c1) 45%,transparent)"></i>barra chiara = stipendio 2</span></div>
+      </div>
+      <div class="card"><h3>Mese per mese</h3><div class="chart" id="rsChart"></div>
+        <div class="legend2">${ids.map(id => `<span><i class="dot" style="background:${colP(id)}"></i>${esc(nomeP(id))}</span>`).join('')}</div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden"><h3 style="padding:14px 16px 0">Tabella per mese</h3>
+        <div class="hscroll" style="overflow-x:auto"><table class="xl st hm">
+          <colgroup><col class="c-nome">${mesi.map(() => '<col>').join('')}<col></colgroup>
+          <thead><tr><th>Dipendente</th>${mesi.map(m => `<th>${etAC(m)}</th>`).join('')}<th>Totale</th></tr></thead>
+          <tbody>${hmRows}</tbody>
+          <tfoot><tr><td>Totale</td>${mesi.map(m => `<td>${s.perM[m].d ? fNum0.format(s.perM[m].d) : ''}</td>`).join('')}<td>${fNum0.format(tot)}</td></tr></tfoot>
+        </table></div>
+        <p class="hint" style="padding:0 16px 14px">Stipendio 1 + 2 di ogni busta paga, in euro.</p>
+      </div>
+    </div>`}`;
+  if(ids.length) drawRsChart(mesi, ids, s);
+}
+
+/* Barre impilate: una colonna per mese, un segmento per dipendente (colore fisso), tooltip al passaggio/tocco. */
+function drawRsChart(mesi, ids, s){
+  const box = $('rsChart'); if(!box) return;
+  const W = Math.max(300, box.clientWidth), H = 240, L = 44, R = 6, T = 10, B = 26;
+  const max = Math.max(1, ...mesi.map(m => s.perM[m].d));
+  const step = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000].find(x => max / x <= 5) || 50000;
+  const top = Math.ceil(max / step) * step;
+  const y = v => T + (H - T - B) * (1 - v / top), bw = (W - L - R) / mesi.length, w = Math.min(34, bw * .62);
+  let g = '';
+  for(let v = 0; v <= top; v += step) g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v >= 1000 ? fNum0.format(v / 1000) + 'k' : v}</text>`;
+  mesi.forEach((m, i) => {
+    const x = L + bw * i + (bw - w) / 2;
+    let base = 0; const segs = ids.filter(id => s.perM[m].byP[id]);
+    segs.forEach((id, k) => {
+      const v = s.perM[m].byP[id], y0 = y(base), y1 = y(base + v); base += v;
+      const hgt = Math.max(0, y0 - y1 - (k < segs.length - 1 ? 2 : 0));
+      if(k === segs.length - 1){ const r = Math.min(4, hgt, w / 2); g += `<path d="M${x},${y1 + hgt + (y0 - y1 - hgt)} V${y1 + r} Q${x},${y1} ${x + r},${y1} H${x + w - r} Q${x + w},${y1} ${x + w},${y1 + r} V${y0} Z" fill="${colP(id)}"/>`; }
+      else g += `<rect x="${x}" y="${y0 - hgt}" width="${w}" height="${hgt}" fill="${colP(id)}"/>`;
+    });
+    g += `<text class="ax" x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${etAC(m).split(' ')[0]}</text><rect class="hit" data-i="${i}" x="${L + bw * i}" y="${T}" width="${bw}" height="${H - T - B + 4}" rx="6"/>`;
+  });
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stipendi dei dipendenti mese per mese">${g}</svg><div class="tip" hidden></div>`;
+  const tip = box.querySelector('.tip');
+  const show = (el) => {
+    box.querySelectorAll('.hit.on').forEach(e => e.classList.remove('on')); el.classList.add('on');
+    const m = mesi[+el.dataset.i], pm = s.perM[m];
+    tip.innerHTML = `<b>${fMonth.format(parse(m + '-01'))}</b>${ids.filter(id => pm.byP[id]).map(id => `<div><span><i class="dot" style="background:${colP(id)}"></i>${esc(nomeP(id))}</span>${fNum0.format(pm.byP[id])}</div>`).join('') || '<div><span>Nessuna busta paga</span></div>'}<div class="tt"><span>Totale</span>${fNum0.format(pm.d)}</div>`;
+    tip.hidden = false;
+    const r = el.getBoundingClientRect(), bx = box.getBoundingClientRect();
+    let left = r.left - bx.left + r.width / 2 - tip.offsetWidth / 2;
+    left = Math.max(0, Math.min(bx.width - tip.offsetWidth, left));
+    tip.style.left = left + 'px'; tip.style.top = Math.max(0, y(pm.d) * bx.width / W - tip.offsetHeight - 8) + 'px';
+  };
+  box.querySelectorAll('.hit').forEach(el => { el.addEventListener('pointerenter', () => show(el)); el.addEventListener('click', () => show(el)); });
+  box.addEventListener('pointerleave', e => { if(e.pointerType === 'mouse'){ tip.hidden = true; box.querySelectorAll('.hit.on').forEach(x => x.classList.remove('on')); } });
+}
+
+/* Foglio di una riga (stipendio 1/2 di una persona, oppure F24) */
+let stEdit = null;
+function openSt(pid){
+  const m = month, r = stRec(m, pid) || {}, f24 = pid === 'f24';
+  stEdit = pid;
+  $('stTitle').textContent = f24 ? 'F24' : nomeP(pid);
+  $('stSub').textContent = `Busta paga di ${fMonth.format(parse(m + '-01'))}${SOCI.some(s => s.id === pid) ? ' · compenso socio' : ''}`;
+  const campo = (id, lab, hint, v) => `<div class="field"><label for="${id}">${lab} <span class="hint">${hint}</span></label><div class="money"><span>€</span><input id="${id}" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${toField(v)}"></div></div>`;
+  $('stFields').innerHTML = f24 ? campo('stF', 'F24', '· importo del mese', r.importo)
+    : campo('stA', 'Stipendio 1', '· attività di Incasso1', r.s1) + campo('stB', 'Stipendio 2', '· attività di Incasso2', r.s2);
+  $('stErr').hidden = true; $('stDel').hidden = !stRec(m, pid); $('stSave').disabled = false;
+  updStCalc();
+  $('dlgSt').showModal();
+  setTimeout(() => (f24 ? $('stF') : $('stA')).focus(), 50);
+}
+function updStCalc(){
+  if(stEdit === 'f24'){ $('stCalc').hidden = true; return; }
+  const a = money($('stA').value), b = money($('stB').value);
+  $('stCalc').hidden = false;
+  $('stCalc').innerHTML = `<span style="display:flex;flex-direction:column;gap:2px"><span>Totale stipendio 1 + 2</span><b class="num">${eur((Number.isFinite(a) ? a : 0) + (Number.isFinite(b) ? b : 0))}</b></span>`;
+}
+$('stFields').addEventListener('input', updStCalc);
+$('stCancel').onclick = () => $('dlgSt').close();
+$('dlgSt').addEventListener('click', e => { if(e.target === $('dlgSt')) $('dlgSt').close(); });
+$('stForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = t => { $('stErr').textContent = t; $('stErr').hidden = false; };
+  const id = `${month}_${stEdit}`;
+  let rec;
+  if(stEdit === 'f24'){ const v = money($('stF').value); if(Number.isNaN(v)) return err('Scrivi un importo valido, per esempio 1850,00.'); rec = v == null ? null : { mese: month, persona: 'f24', importo: v }; }
+  else {
+    const a = money($('stA').value), b = money($('stB').value);
+    if(Number.isNaN(a) || Number.isNaN(b)) return err('Scrivi importi validi, per esempio 1250,00.');
+    rec = a == null && b == null ? null : { mese: month, persona: stEdit, s1: a, s2: b };
+  }
+  $('stSave').disabled = true;
+  try{ if(rec) await backend.setSt(id, rec); else await backend.delSt(id); $('dlgSt').close(); toast('Salvato'); }
+  catch(e2){ $('stSave').disabled = false; err('Salvataggio non riuscito: ' + (e2.message || 'riprova')); }
+});
+$('stDel').onclick = async () => {
+  if(!confirm('Svuotare questa riga per questo mese?')) return;
+  try{ await backend.delSt(`${month}_${stEdit}`); $('dlgSt').close(); toast('Riga svuotata'); }
+  catch(e){ toast('Non riuscito: ' + (e.message || 'riprova')); }
+};
+
+/* Dipendenti */
+function drawPers(){
+  $('prsRows').innerHTML = PERS.length ? PERS.map(p => `<div class="prs-row"><span class="dot" style="background:${colP(p.id)}"></span>
+    <input class="txt" data-p="${p.id}" value="${esc(p.nome)}" maxlength="40" aria-label="Nome">
+    <label class="chk"><input type="checkbox" data-a="${p.id}"${p.attivo !== false ? ' checked' : ''}> in servizio</label></div>`).join('')
+    : '<p class="muted" style="margin:0 0 8px">Nessun dipendente ancora.</p>';
+}
+function openPers(){ $('prsErr').hidden = true; $('prsNew').value = ''; drawPers(); $('dlgPers').showModal(); }
+const prsErr = t => { $('prsErr').textContent = t; $('prsErr').hidden = false; };
+$('prsRows').addEventListener('change', async e => {
+  const n = e.target.closest('[data-p]'), a = e.target.closest('[data-a]');
+  try{
+    if(n){ const v = n.value.trim(); if(!v) return prsErr('Il nome non può essere vuoto.'); await backend.updPers(n.dataset.p, { nome: v }); }
+    if(a) await backend.updPers(a.dataset.a, { attivo: a.checked });
+  }catch(e2){ prsErr('Non riuscito: ' + (e2.message || 'riprova')); }
+});
+$('prsAdd').onclick = async () => {
+  const v = $('prsNew').value.trim(); if(!v) return prsErr('Scrivi nome e cognome.');
+  if(PERS.some(p => p.nome.toLowerCase() === v.toLowerCase())) return prsErr('C\'è già un dipendente con questo nome.');
+  try{ await backend.addPers({ nome: v, attivo: true, creato: new Date().toISOString() }); $('prsNew').value = ''; drawPers(); }
+  catch(e){ prsErr('Non riuscito: ' + (e.message || 'riprova')); }
+};
+$('prsImport').onclick = async () => {
+  try{
+    const nomi = await backend.nomiFerie();
+    const nuovi = nomi.filter(n => !PERS.some(p => p.nome.toLowerCase() === n.toLowerCase()));
+    for(const n of nuovi) await backend.addPers({ nome: n, attivo: true, creato: new Date().toISOString() });
+    drawPers(); toast(nuovi.length ? `Aggiunti ${nuovi.length} dipendenti dall'app Ferie` : 'Nessun nome nuovo nell\'app Ferie');
+  }catch(e){ prsErr('Non riuscito: ' + (e.message || 'riprova')); }
+};
+$('prsClose').onclick = () => $('dlgPers').close();
+$('dlgPers').addEventListener('click', e => { if(e.target === $('dlgPers')) $('dlgPers').close(); });
+
+$('v-stipendi').addEventListener('click', e => {
+  if(e.target.closest('#rsOpen')){ rsOpen = true; rsAnno = annoCont(month); render(); window.scrollTo(0, 0); return; }
+  if(e.target.closest('#prsOpen')) return openPers();
+  const r = e.target.closest('tr[data-st]'); if(r) return openSt(r.dataset.st);
+  const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
+});
+$('v-stipendi').addEventListener('keydown', e => { const r = e.target.closest('tr[data-st]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openSt(r.dataset.st); } });
+$('v-rs').addEventListener('click', e => {
+  if(e.target.closest('#rsBack')){ rsOpen = false; render(); window.scrollTo(0, 0); return; }
+  if(e.target.closest('#rsPrev')){ rsAnno--; render(); return; }
+  if(e.target.closest('#rsNext') && !e.target.closest('#rsNext').disabled){ rsAnno++; render(); }
+});
+addEventListener('resize', () => { if(rsOpen && view === 'stipendi') render(); });
+
 /* ---------- spese Incasso2 ---------- */
 function tabellaSpese(){
   const periodi = periodiTabella(), anni = calLevel === 'a';
@@ -1020,6 +1409,7 @@ const setView = v => { view = v; ssSet('bar-vista', v); render(); window.scrollT
 $('tab-giorni').onclick = () => setView('giorni');
 $('tab-calendario').onclick = () => setView('calendario');
 $('tab-spese').onclick = () => setView('spese');
+$('tab-stipendi').onclick = () => { rsOpen = false; setView('stipendi'); };
 $('tab-riepilogo').onclick = () => setView('riepilogo');
 
 // Tocco su giorno/mese/anno nel calendario; pizzico con due dita, Ctrl+rotella e scorrimento laterale in tutte le schede.
@@ -1141,6 +1531,29 @@ function startDemo(){
     sp = { SP: list, TIPI: {} };
   }
   SP = sp.SP; TIPI = sp.TIPI;
+  // Simulazione stipendi: 5 dipendenti finti, due anni contabili (dic 2024 – oggi).
+  const KEY_ST = 'bar-prova-stipendi-1';
+  let st = null; try{ st = JSON.parse(lsGet(KEY_ST) || 'null'); }catch(e){}
+  if(!st){
+    const cur = TODAY().slice(0, 7);
+    const P = [['p1','Anna Rossi',1150,320,null,null],['p2','Marco Bianchi',1280,410,null,null],['p3','Giulia Verdi',980,260,null,null],
+               ['p4','Luca Neri',1050,380,null,'2025-08'],['p5','Sara Gallo',900,300,'2026-04',null]];
+    let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const S = {};
+    for(let m = `${+cur.slice(0, 4) - 2}-12`; m <= cur; m = shiftMonth(m, 1)){
+      const xiii = m.slice(5) === '12' ? 1.85 : 1;   // a dicembre la tredicesima
+      for(const [id, , b1, b2, dal, al] of P){
+        if((dal && m < dal) || (al && m > al)) continue;
+        S[`${m}_${id}`] = { mese: m, persona: id, s1: round2(b1 * xiii * (0.93 + rnd() * 0.14)), s2: round2(b2 * (0.8 + rnd() * 0.4)) };
+      }
+      S[`${m}_jacopo`] = { mese: m, persona: 'jacopo', s1: 1500, s2: 800 };
+      S[`${m}_claudio`] = { mese: m, persona: 'claudio', s1: 1500, s2: 800 };
+      S[`${m}_f24`] = { mese: m, persona: 'f24', importo: round2(1900 + rnd() * 500) };
+    }
+    st = { ST: S, PERS: P.map(([id, nome, , , , al]) => ({ id, nome, attivo: !al })) };
+  }
+  ST = st.ST; PERS = st.PERS;
+  const storeSt = () => { lsSet(KEY_ST, JSON.stringify({ ST, PERS })); render(); };
   const storeSp = () => { lsSet(KEY_SP, JSON.stringify({ SP, TIPI })); render(); };
   const store = () => lsSet(KEY, JSON.stringify(G));
   backend = {
@@ -1150,7 +1563,12 @@ function startDemo(){
     updSpesa: async (id, r) => { SP = SP.map(s => s.id === id ? { ...s, ...r } : s); storeSp(); },
     delSpesa: async id => { SP = SP.filter(s => s.id !== id); storeSp(); },
     setTipi: async t => { TIPI = t; storeSp(); },
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); }catch(e){} location.href = location.pathname; },
+    setSt: async (id, r) => { ST = { ...ST, [id]: r }; storeSt(); },
+    delSt: async id => { const c = { ...ST }; delete c[id]; ST = c; storeSt(); },
+    addPers: async p => { PERS = [...PERS, { ...p, id: 'p' + Math.random().toString(36).slice(2, 8) }]; storeSt(); },
+    updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
+    nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); }catch(e){} location.href = location.pathname; },
   };
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
@@ -1174,6 +1592,8 @@ async function startFirebase(){
     const col = S.collection(db, 'bar_giorni');
     const spCol = S.collection(db, 'bar_spese');
     const tipiDoc = S.doc(db, 'bar_impostazioni', 'tipologie');
+    const stCol = S.collection(db, 'bar_stipendi');
+    const persCol = S.collection(db, 'bar_persone');
     const nice = e => new Error(e && e.code === 'permission-denied' ? 'permesso negato' : (e && e.message) || 'controlla la connessione');
     const run = async p => { try{ return await p; }catch(e){ throw nice(e); } };
 
@@ -1184,6 +1604,12 @@ async function startFirebase(){
       updSpesa: (id, r) => run(S.updateDoc(S.doc(spCol, id), { ...r, aggiornata: S.serverTimestamp(), da: auth.currentUser.email })),
       delSpesa: id => run(S.deleteDoc(S.doc(spCol, id))),
       setTipi: t => run(S.setDoc(tipiDoc, t)),
+      setSt: (id, r) => run(S.setDoc(S.doc(stCol, id), { ...r, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
+      delSt: id => run(S.deleteDoc(S.doc(stCol, id))),
+      addPers: p => run(S.addDoc(persCol, p)),
+      updPers: (id, p) => run(S.updateDoc(S.doc(persCol, id), p)),
+      // Nomi dei dipendenti dall'app Ferie (collezione ferie_staff, che i soci possono leggere).
+      nomiFerie: async () => (await run(S.getDocs(S.collection(db, 'ferie_staff')))).docs.map(d => d.data()).filter(x => x.ruolo !== 'titolare' && x.nome).map(x => x.nome.trim()),
       logout: () => A.signOut(auth),
     };
 
@@ -1206,8 +1632,8 @@ async function startFirebase(){
     A.onAuthStateChanged(auth, user => {
       if(unsub){ unsub(); unsub = null; }
       unsubs.forEach(u => u()); unsubs = [];
-      for(const d of ['dlg','dlgSp','dlgTip']) if($(d).open) $(d).close();
-      if(!user){ me = null; G = {}; SP = []; TIPI = {}; gate('login'); return; }
+      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers']) if($(d).open) $(d).close();
+      if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
       unsub = S.onSnapshot(col, snap => {
@@ -1216,6 +1642,11 @@ async function startFirebase(){
           first = false; gate(null); signedIn({ email: user.email, nome: user.displayName });
           unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
+          unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
+          unsubs.push(S.onSnapshot(persCol, s5 => {
+            PERS = s5.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => String(a.creato || '').localeCompare(String(b.creato || '')) || a.nome.localeCompare(b.nome));
+            render(); if($('dlgPers').open) drawPers();
+          }, () => {}));
         } else render();
       }, err => {
         if(err.code === 'permission-denied') gate('denied', user.email);
