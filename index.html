@@ -22,6 +22,7 @@
   --accent:#1c2230; --on-accent:#ffffff;
   --i1:#2f63b6; --i1-soft:#e4ecf8; --i2:#c0562f; --i2-soft:#f8e8e1;
   --am:#b98100; --am-soft:#fbf0d6; --pm:#5a4fb0; --pm-soft:#ebe8f8;
+  --t0:#2f7d5b; --t1:#c0562f; --t2:#3b6fb6; --t3:#a8437f; --t4:#8a7a18; --t5:#6a52b8; --t6:#1f8a99;
   --good:#188046; --bad:#c62828; --warn:#8a5a00; --warn-soft:#fdf0d3;
   --f-display:"Fraunces", Georgia, "Times New Roman", serif;
   --f-body:"Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -158,8 +159,37 @@ table.xl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .ybox.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .ybox.fut{opacity:.45;cursor:default}
 .xl small.pc{display:block;font-size:.68rem;font-weight:600;color:var(--muted);line-height:1.1}
-.xl.mesi{min-width:520px}
+.xl.mesi{min-width:600px}
 .muted{color:var(--muted)}
+
+/* spese Incasso2 */
+.sp-top{display:flex;gap:8px;margin-bottom:12px}
+.sp-top .btn{height:40px;padding:0 14px}
+.sp-top .btn.add{flex:1}
+.tipo{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.tipo i{width:18px;height:18px;border-radius:5px;flex:none;display:grid;place-items:center;font-style:normal;font-size:.66rem;font-weight:800;color:#fff;text-transform:uppercase}
+.tipo span{overflow:hidden;text-overflow:ellipsis}
+.xl.spese col.c-tipo{width:30%}
+.xl.spese col.c-imp{width:96px}
+.xl.spese td.nome{text-align:left;white-space:normal}
+.xl.spese th.l,.xl.spese td.l{text-align:left}
+.xl.spese tr.gap td{border-top:2px solid var(--line)}
+.ptipi{display:grid;gap:8px}
+.ptipo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;font-size:.88rem}
+.ptipo .b{grid-column:1 / -1;height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
+.ptipo .b i{display:block;height:100%;border-radius:999px}
+.ptipo b{white-space:nowrap}
+.ptipo b small{color:var(--muted);font-weight:600;margin-left:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 11px 6px 6px;cursor:pointer;font-weight:600;font-size:.86rem;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--surface)}
+.chip:focus-visible{outline:2px solid var(--accent)}
+.txt{width:100%;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:11px 12px;font-size:1rem}
+.txt:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tiprow{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;margin-bottom:8px}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sugg button{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:4px 10px;font-size:.8rem;cursor:pointer;color:var(--muted)}
+.sugg button:hover{color:var(--fg);border-color:var(--muted)}
 
 /* riepilogo */
 .cards{display:grid;gap:12px}
@@ -244,6 +274,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
       <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
+      <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button">Spese</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
     </nav>
   </div>
@@ -266,6 +297,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     </div>
     <section id="v-giorni"></section>
     <section id="v-calendario" class="cal" hidden></section>
+    <section id="v-spese" hidden></section>
     <section id="v-riepilogo" hidden></section>
   </div>
 </main>
@@ -296,6 +328,55 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       <div class="r">
         <button class="btn ghost" id="fCancel" type="button">Annulla</button>
         <button class="btn" id="fSave" type="submit">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSp">
+  <form class="sheet" id="spForm" method="dialog" novalidate>
+    <h2 id="spTitle" style="text-transform:none">Nuova spesa</h2>
+    <p class="sub" style="margin:-8px 0 14px">Spesa dell'attività di Incasso2</p>
+    <div class="field">
+      <label for="spData">Giorno</label>
+      <input class="txt" id="spData" type="date">
+    </div>
+    <div class="field">
+      <label>Tipologia</label>
+      <div class="chips" id="spTipi" role="group" aria-label="Tipologia"></div>
+    </div>
+    <div class="field">
+      <label for="spNome">Spesa</label>
+      <input class="txt" id="spNome" list="spNomi" autocomplete="off" placeholder="Es. pane, ghiaccio…" maxlength="80">
+      <datalist id="spNomi"></datalist>
+      <div class="sugg" id="spSugg"></div>
+    </div>
+    <div class="field">
+      <label for="spImp">Importo</label>
+      <div class="money"><span>€</span><input id="spImp" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+    </div>
+    <p class="err" id="spErr" hidden></p>
+    <div class="actions">
+      <button class="btn danger" id="spDel" type="button">Elimina</button>
+      <div class="r">
+        <button class="btn ghost" id="spCancel" type="button">Annulla</button>
+        <button class="btn" id="spSave" type="submit">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgTip">
+  <form class="sheet" id="tipForm" method="dialog" novalidate>
+    <h2 style="text-transform:none">Tipologie di spesa</h2>
+    <p class="sub" style="margin:-8px 0 14px">Dai un nome alle tipologie. Cambiare un nome aggiorna anche le spese già segnate.</p>
+    <div id="tipRows"></div>
+    <p class="err" id="tipErr" hidden></p>
+    <div class="actions">
+      <span></span>
+      <div class="r">
+        <button class="btn ghost" id="tipCancel" type="button">Annulla</button>
+        <button class="btn" id="tipSave" type="submit">Salva</button>
       </div>
     </div>
   </form>
@@ -362,9 +443,23 @@ const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null
 const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
 
 /* ---------- stato ---------- */
+// Spese di Incasso2: [{ id, data:'AAAA-MM-GG', tipo:'a'…'g', nome, importo }]
+let SP = [];
+// Tipologie a…g: per ora solo lettere, i nomi li decide l'utente (Spese › Tipologie).
+const TIPI_ID = ['a','b','c','d','e','f','g'];
+let TIPI = {};
+const tipoNome = t => (TIPI[t] || '').trim() || t.toUpperCase();
+const tipoCol = t => `var(--t${Math.max(0, TIPI_ID.indexOf(t))})`;
+const tipoTag = t => `<span class="tipo"><i style="background:${tipoCol(t)}">${t}</i><span>${esc(tipoNome(t))}</span></span>`;
+function speseMese(m){
+  const list = SP.filter(s => s.data && s.data.startsWith(m + '-'));
+  const perTipo = {}; let totale = 0;
+  for(const s of list){ totale += s.importo || 0; perTipo[s.tipo] = (perTipo[s.tipo] || 0) + (s.importo || 0); }
+  return { list, perTipo, totale: round2(totale) };
+}
 let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
 let me = null, backend = null;
-let view = ['giorni','calendario','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
+let view = ['giorni','calendario','spese','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
 let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
 
 const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
@@ -404,12 +499,13 @@ function render(){
   $('mTitle').classList.toggle('zoom', view === 'calendario' && lvl !== 'a');
   $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
   $('oggi').hidden = lvl === 'm' && month === cur;
-  for(const v of ['giorni','calendario','riepilogo']){
+  for(const v of ['giorni','calendario','spese','riepilogo']){
     $('tab-' + v).setAttribute('aria-selected', view === v);
     $('v-' + v).hidden = view !== v;
   }
   if(view === 'giorni') renderGiorni();
   else if(view === 'calendario') renderCal();
+  else if(view === 'spese') renderSpese();
   else renderRiepilogo();
 }
 
@@ -525,12 +621,13 @@ function tabellaMesi(){
   const fM = new Intl.DateTimeFormat('it-IT', { month:'short' });
   const mesi = [];
   for(let mi = 0; mi < 12; mi++){ const m = `${y}-${pad(mi + 1)}`; if(m <= curM) mesi.push([m, stats(m)]); }
-  if(!mesi.some(([, s]) => s.incDays)) return '';
-  const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0 };
+  if(!mesi.some(([m, s]) => s.incDays || speseMese(m).list.length)) return '';
+  const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0, sp: 0 };
   const rows = mesi.map(([m, s]) => {
-    A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays;
+    const spm = speseMese(m).totale;
+    A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays; A.sp += spm;
     const sp = s.am + s.pm;
-    if(!s.incDays) return `<tr data-m="${m}"${m === month ? ' class="today"' : ''}><td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td><td class="vuoto" colspan="6">–</td></tr>`;
+    if(!s.incDays && !spm) return `<tr data-m="${m}"${m === month ? ' class="today"' : ''}><td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td><td class="vuoto" colspan="7">–</td></tr>`;
     return `<tr tabindex="0" data-m="${m}"${m === month ? ' class="today"' : ''}>
       <td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td>
       <td class="am">${num(s.am)}<small class="pc">${s.splitDays ? pct(s.am, sp) : ''}</small></td>
@@ -538,23 +635,25 @@ function tabellaMesi(){
       <td>${num(s.i1)}<small class="pc">${pct(s.i1, s.tot)}</small></td>
       <td>${num(s.i2)}<small class="pc">${pct(s.i2, s.tot)}</small></td>
       <td class="tot">${num(s.tot)}<small class="pc">${s.incDays} gg · media ${fNum0.format(s.media)}</small></td>
+      <td>${num(spm)}<small class="pc">${s.i2 ? 'netto I2 ' + fNum0.format(s.i2 - spm) : ''}</small></td>
     </tr>`;
   }).join('');
   const sp = A.am + A.pm;
   return `<div class="card" style="padding:0;overflow:hidden">
     <h3 style="padding:14px 16px 0">Tutti i mesi del ${y}</h3>
     <div style="overflow-x:auto"><table class="xl mesi">
-      <colgroup><col class="c-day"><col><col><col><col><col></colgroup>
-      <thead><tr><th>Mese</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+      <colgroup><col class="c-day"><col><col><col><col><col><col></colgroup>
+      <thead><tr><th>Mese</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Spese I2</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>${y}</td>
         <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
         <td>${num(A.pm)}<small class="pc">${sp ? pct(A.pm, sp) : ''}</small></td>
         <td>${num(A.i1)}<small class="pc">${pct(A.i1, A.tot)}</small></td>
         <td>${num(A.i2)}<small class="pc">${pct(A.i2, A.tot)}</small></td>
-        <td>${num(A.tot)}<small class="pc">${A.giorni} gg · media ${fNum0.format(A.giorni ? A.tot / A.giorni : 0)}</small></td></tr></tfoot>
+        <td>${num(A.tot)}<small class="pc">${A.giorni} gg · media ${fNum0.format(A.giorni ? A.tot / A.giorni : 0)}</small></td>
+        <td>${num(A.sp)}<small class="pc">${A.i2 ? 'netto I2 ' + fNum0.format(A.i2 - A.sp) : ''}</small></td></tr></tfoot>
     </table></div>
-    <p class="hint" style="padding:0 16px 14px">Tocca un mese per vederne il riepilogo. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale del mese.</p>
+    <p class="hint" style="padding:0 16px 14px">Tocca un mese per vederne il riepilogo. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale del mese. Spese I2 = spese segnate nella scheda Spese, con Incasso2 al netto.</p>
   </div>`;
 }
 
@@ -600,6 +699,15 @@ function renderRiepilogo(){
       </div>
     </div>
 
+    ${(() => { const sm = speseMese(month); return `<div class="card">
+      <h3>Incasso2 e spese</h3>
+      <div class="kpis" style="margin-top:0">
+        <div><div class="l">Incasso2</div><div class="v num">${eur(s.i2)}</div></div>
+        <div><div class="l">Spese Incasso2</div><div class="v num">${eur(sm.totale)}</div><div class="sub" style="margin:0;font-size:.74rem">${s.i2 ? pct(sm.totale, s.i2) + ' di Incasso2' : ''}</div></div>
+        <div><div class="l">Incasso2 − spese</div><div class="v num" style="color:${s.i2 - sm.totale < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(s.i2 - sm.totale)}</div></div>
+      </div>
+    </div>`; })()}
+
     <div class="card">
       <h3>Mattina e pomeriggio · totale dei due incassi</h3>
       ${s.splitDays ? `
@@ -634,6 +742,135 @@ function renderRiepilogo(){
     ${tabellaMesi()}
   </div>`;
 }
+
+/* ---------- spese Incasso2 ---------- */
+function renderSpese(){
+  const sm = speseMese(month), s = stats(month);
+  const netto = s.i2 - sm.totale;
+  const list = [...sm.list].sort((a, b) => b.data.localeCompare(a.data) || (b.creata || '').localeCompare(a.creata || ''));
+  let prev = '';
+  const rows = list.map(x => {
+    const dt = parse(x.data), nuovo = x.data !== prev; prev = x.data;
+    return `<tr tabindex="0" data-sp="${x.id}"${nuovo ? ' class="gap"' : ''}>
+      <td class="day">${nuovo ? `<b>${dt.getDate()}</b><small>${fWd.format(dt).replace('.', '')}</small>` : ''}</td>
+      <td class="l">${tipoTag(x.tipo)}</td>
+      <td class="nome">${esc(x.nome)}</td>
+      <td class="tot">${num(x.importo)}</td>
+    </tr>`;
+  }).join('');
+  const tipiUsati = TIPI_ID.filter(t => sm.perTipo[t]).sort((a, b) => sm.perTipo[b] - sm.perTipo[a]);
+  $('v-spese').innerHTML = `
+    <div class="sp-top">
+      <button class="btn add" id="spAdd" type="button">+ Nuova spesa</button>
+      <button class="btn ghost" id="spTipBtn" type="button">Tipologie</button>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <h3>Spese Incasso2 del mese</h3>
+        <div class="big num">${eur(sm.totale)}</div>
+        <div class="sub">${sm.list.length} ${sm.list.length === 1 ? 'spesa' : 'spese'}</div>
+        <div class="kpis">
+          <div><div class="l">Incasso2</div><div class="v num">${eur(s.i2)}</div></div>
+          <div><div class="l">Incasso2 − spese</div><div class="v num" style="color:${netto < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(netto)}</div></div>
+          <div><div class="l">Spese su Incasso2</div><div class="v num">${s.i2 ? pct(sm.totale, s.i2) : '–'}</div></div>
+        </div>
+      </div>
+      ${tipiUsati.length ? `<div class="card"><h3>Per tipologia</h3><div class="ptipi">${tipiUsati.map(t => `
+        <div class="ptipo">${tipoTag(t)}<b class="num">${eur(sm.perTipo[t])}<small>${pct(sm.perTipo[t], sm.totale)}</small></b>
+          <div class="b"><i style="width:${sm.perTipo[t] / sm.totale * 100}%;background:${tipoCol(t)}"></i></div></div>`).join('')}</div></div>` : ''}
+      ${list.length ? `<div class="sheetwrap"><table class="xl spese">
+        <colgroup><col class="c-day"><col class="c-tipo"><col><col class="c-imp"></colgroup>
+        <thead><tr><th>Giorno</th><th class="l">Tipologia</th><th class="l">Spesa</th><th>Importo</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>Totale</td><td></td><td></td><td>${num(sm.totale)}</td></tr></tfoot>
+      </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna spesa segnata in questo mese. Tocca "+ Nuova spesa".</p></div>'}
+    </div>
+    <p class="hint">Tocca una riga per correggerla o eliminarla.</p>`;
+}
+
+let spEdit = null, spTipo = 'a';
+function nomiUsati(){
+  // Nomi già usati, dal più frequente, con l'ultima tipologia usata per ciascuno.
+  const m = new Map();
+  for(const s of [...SP].sort((a, b) => a.data.localeCompare(b.data))){
+    const k = (s.nome || '').trim().toLowerCase(); if(!k) continue;
+    const e = m.get(k) || { nome: s.nome.trim(), n: 0, tipo: s.tipo }; e.n++; e.tipo = s.tipo; e.nome = s.nome.trim(); m.set(k, e);
+  }
+  return [...m.values()].sort((a, b) => b.n - a.n);
+}
+function drawTipi(){
+  $('spTipi').innerHTML = TIPI_ID.map(t => `<button type="button" class="chip" data-t="${t}" aria-pressed="${t === spTipo}"><span class="tipo"><i style="background:${tipoCol(t)}">${t}</i><span>${esc(tipoNome(t))}</span></span></button>`).join('');
+}
+function openSpesa(id){
+  const x = id ? SP.find(s => s.id === id) : null;
+  spEdit = x ? x.id : null;
+  const nomi = nomiUsati();
+  const today = TODAY();
+  // Nuova spesa: il giorno è oggi se stai guardando il mese in corso, altrimenti l'ultimo giorno del mese scelto.
+  const defDay = month === today.slice(0, 7) ? today : monthDays(month).slice(-1)[0];
+  spTipo = x ? x.tipo : 'a';
+  $('spTitle').textContent = x ? 'Modifica spesa' : 'Nuova spesa';
+  $('spData').value = x ? x.data : defDay;
+  $('spData').max = today;
+  $('spNome').value = x ? x.nome : '';
+  $('spImp').value = x ? toField(x.importo) : '';
+  $('spNomi').innerHTML = nomi.map(n => `<option value="${esc(n.nome)}">`).join('');
+  $('spSugg').innerHTML = x ? '' : nomi.slice(0, 8).map(n => `<button type="button" data-n="${esc(n.nome)}" data-t="${n.tipo}">${esc(n.nome)}</button>`).join('');
+  $('spErr').hidden = true;
+  $('spDel').hidden = !x;
+  $('spSave').disabled = false;
+  drawTipi();
+  $('dlgSp').showModal();
+  if(!x) setTimeout(() => (nomi.length ? $('spNome') : $('spNome')).focus(), 50);
+}
+$('spTipi').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if(b){ spTipo = b.dataset.t; drawTipi(); } });
+$('spSugg').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if(!b) return; $('spNome').value = b.dataset.n; spTipo = b.dataset.t; drawTipi(); $('spImp').focus(); });
+$('spNome').addEventListener('change', () => { if(spEdit) return; const n = nomiUsati().find(n => n.nome.toLowerCase() === $('spNome').value.trim().toLowerCase()); if(n){ spTipo = n.tipo; drawTipi(); } });
+$('spCancel').onclick = () => $('dlgSp').close();
+$('dlgSp').addEventListener('click', e => { if(e.target === $('dlgSp')) $('dlgSp').close(); });
+$('spForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = m => { $('spErr').textContent = m; $('spErr').hidden = false; };
+  const data = $('spData').value, nome = $('spNome').value.trim(), importo = money($('spImp').value);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) return err('Scegli il giorno della spesa.');
+  if(data > TODAY()) return err('Il giorno non può essere nel futuro.');
+  if(!nome) return err('Scrivi il nome della spesa (es. pane, ghiaccio).');
+  if(importo == null || Number.isNaN(importo) || importo <= 0) return err('Scrivi un importo valido, per esempio 12,50.');
+  const rec = { data, tipo: spTipo, nome, importo };
+  $('spSave').disabled = true;
+  try{
+    if(spEdit) await backend.updSpesa(spEdit, rec); else await backend.addSpesa(rec);
+    $('dlgSp').close();
+    if(data.slice(0, 7) !== month){ month = data.slice(0, 7); ssSet('bar-mese', month); render(); }
+    toast(spEdit ? 'Spesa aggiornata' : 'Spesa segnata');
+  }catch(e2){ $('spSave').disabled = false; err('Salvataggio non riuscito: ' + (e2.message || 'riprova')); }
+});
+$('spDel').onclick = async () => {
+  if(!spEdit || !confirm('Eliminare questa spesa?')) return;
+  try{ await backend.delSpesa(spEdit); $('dlgSp').close(); toast('Spesa eliminata'); }
+  catch(e){ toast('Non riuscito: ' + (e.message || 'riprova')); }
+};
+
+function openTipi(){
+  $('tipRows').innerHTML = TIPI_ID.map(t => `<div class="tiprow"><span class="tipo"><i style="background:${tipoCol(t)}">${t}</i></span><input class="txt" data-t="${t}" maxlength="30" value="${esc(TIPI[t] || '')}" placeholder="Tipologia ${t.toUpperCase()}"></div>`).join('');
+  $('tipErr').hidden = true; $('tipSave').disabled = false;
+  $('dlgTip').showModal();
+}
+$('tipCancel').onclick = () => $('dlgTip').close();
+$('dlgTip').addEventListener('click', e => { if(e.target === $('dlgTip')) $('dlgTip').close(); });
+$('tipForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const t = {}; $('tipRows').querySelectorAll('input').forEach(i => t[i.dataset.t] = i.value.trim());
+  $('tipSave').disabled = true;
+  try{ await backend.setTipi(t); $('dlgTip').close(); toast('Tipologie salvate'); }
+  catch(e2){ $('tipSave').disabled = false; $('tipErr').textContent = 'Salvataggio non riuscito: ' + (e2.message || 'riprova'); $('tipErr').hidden = false; }
+});
+$('v-spese').addEventListener('click', e => {
+  if(e.target.closest('#spAdd')) return openSpesa(null);
+  if(e.target.closest('#spTipBtn')) return openTipi();
+  const r = e.target.closest('tr[data-sp]'); if(r) openSpesa(r.dataset.sp);
+});
+$('v-spese').addEventListener('keydown', e => { const r = e.target.closest('tr[data-sp]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openSpesa(r.dataset.sp); } });
 
 /* ---------- foglio giorno ---------- */
 let editing = null;
@@ -707,6 +944,7 @@ $('mTitle').onclick = zoomOut;
 const setView = v => { view = v; ssSet('bar-vista', v); render(); window.scrollTo(0, 0); };
 $('tab-giorni').onclick = () => setView('giorni');
 $('tab-calendario').onclick = () => setView('calendario');
+$('tab-spese').onclick = () => setView('spese');
 $('tab-riepilogo').onclick = () => setView('riepilogo');
 
 // Calendario: tocco su giorno/mese/anno, pizzico con due dita per lo zoom, scorrimento laterale per cambiare periodo.
@@ -802,11 +1040,30 @@ function startDemo(){
     if(ks.length > 6){ saved[ks[3]].note = 'Pioggia tutto il giorno, pomeriggio vuoto.'; saved[ks[ks.length - 4]].note = 'Serata con musica dal vivo.'; }
   }
   G = saved;
+  const KEY_SP = 'bar-prova-spese-1';
+  let sp = null; try{ sp = JSON.parse(lsGet(KEY_SP) || 'null'); }catch(e){}
+  if(!sp){
+    const today = TODAY(), cur = today.slice(0, 7);
+    const voci = [['pane','a',18],['ghiaccio','b',12],['latte','a',24],['frutta','a',31],['detersivi','c',22],['bicchieri','c',15],['manutenzione frigo','d',80]];
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const list = [];
+    for(const m of [shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
+      if(d >= today || parse(d).getDay() === 1) continue;
+      for(const [nome, tipo, base] of voci) if(rnd() < (tipo === 'd' ? 0.03 : 0.22)) list.push({ id: Math.random().toString(36).slice(2, 10), data: d, tipo, nome, importo: round2(base * (0.7 + rnd() * 0.6)), creata: d + 'T09:00' });
+    }
+    sp = { SP: list, TIPI: { a:'Alimentari', b:'Ghiaccio e bevande', c:'Pulizia e consumo', d:'Manutenzione' } };
+  }
+  SP = sp.SP; TIPI = sp.TIPI;
+  const storeSp = () => { lsSet(KEY_SP, JSON.stringify({ SP, TIPI })); render(); };
   const store = () => lsSet(KEY, JSON.stringify(G));
   backend = {
     save: async (d, f) => { G = { ...G, [d]: f }; store(); render(); },
     remove: async d => { const c = { ...G }; delete c[d]; G = c; store(); render(); },
-    logout: async () => { try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); },
+    addSpesa: async r => { SP = [...SP, { ...r, id: Math.random().toString(36).slice(2, 10), creata: new Date().toISOString() }]; storeSp(); },
+    updSpesa: async (id, r) => { SP = SP.map(s => s.id === id ? { ...s, ...r } : s); storeSp(); },
+    delSpesa: async id => { SP = SP.filter(s => s.id !== id); storeSp(); },
+    setTipi: async t => { TIPI = t; storeSp(); },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); }catch(e){} location.reload(); },
   };
   $('notice').innerHTML = '<div class="banner">Modalità prova sul PC: dati finti, solo in questo browser. "Esci" dal menu in alto a destra li azzera.</div>';
   gate(null);
@@ -816,7 +1073,7 @@ function startDemo(){
 async function startFirebase(){
   gate('loading');
   const FB_V = '10.12.2';
-  let unsub = null;
+  let unsub = null, unsubs = [];
   try{
     const { firebaseConfig } = await import('./firebase-config.js');
     const [{ initializeApp }, A, S] = await Promise.all([
@@ -828,12 +1085,18 @@ async function startFirebase(){
     const auth = A.getAuth(app);
     const db = S.initializeFirestore(app, { localCache: S.persistentLocalCache() });
     const col = S.collection(db, 'bar_giorni');
+    const spCol = S.collection(db, 'bar_spese');
+    const tipiDoc = S.doc(db, 'bar_impostazioni', 'tipologie');
     const nice = e => new Error(e && e.code === 'permission-denied' ? 'permesso negato' : (e && e.message) || 'controlla la connessione');
     const run = async p => { try{ return await p; }catch(e){ throw nice(e); } };
 
     backend = {
       save: (d, f) => run(S.setDoc(S.doc(col, d), { ...f, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
       remove: d => run(S.deleteDoc(S.doc(col, d))),
+      addSpesa: r => run(S.addDoc(spCol, { ...r, creata: new Date().toISOString(), da: auth.currentUser.email })),
+      updSpesa: (id, r) => run(S.updateDoc(S.doc(spCol, id), { ...r, aggiornata: S.serverTimestamp(), da: auth.currentUser.email })),
+      delSpesa: id => run(S.deleteDoc(S.doc(spCol, id))),
+      setTipi: t => run(S.setDoc(tipiDoc, t)),
       logout: () => A.signOut(auth),
     };
 
@@ -855,13 +1118,18 @@ async function startFirebase(){
 
     A.onAuthStateChanged(auth, user => {
       if(unsub){ unsub(); unsub = null; }
-      if($('dlg').open) $('dlg').close();
-      if(!user){ me = null; G = {}; gate('login'); return; }
+      unsubs.forEach(u => u()); unsubs = [];
+      for(const d of ['dlg','dlgSp','dlgTip']) if($(d).open) $(d).close();
+      if(!user){ me = null; G = {}; SP = []; TIPI = {}; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
       unsub = S.onSnapshot(col, snap => {
         G = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
-        if(first){ first = false; gate(null); signedIn({ email: user.email, nome: user.displayName }); } else render();
+        if(first){
+          first = false; gate(null); signedIn({ email: user.email, nome: user.displayName });
+          unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
+          unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
+        } else render();
       }, err => {
         if(err.code === 'permission-denied') gate('denied', user.email);
         else gate('error', 'Il gestionale non è raggiungibile. Controlla la connessione e riprova.');
