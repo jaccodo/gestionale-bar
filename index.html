@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestionale Bar</title>
+<meta name="theme-color" content="#1c2230">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gestionale">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: banda scura in alto con titolo e schede (Giorni, Riepilogo), barra del mese, sotto il contenuto;
+   tocco su un giorno = foglio dal basso per segnare Incasso1, Incasso2, parziale mattina (sul totale) e note. */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --fg:#1b1f27; --muted:#5d6470; --line:#e2e5eb; --soft:#eef0f4;
+  --band:#1c2230; --band-fg:#f3f5f9; --band-muted:#9aa3b5;
+  --accent:#1c2230; --on-accent:#ffffff;
+  --i1:#2f63b6; --i1-soft:#e4ecf8; --i2:#c0562f; --i2-soft:#f8e8e1;
+  --am:#b98100; --am-soft:#fbf0d6; --pm:#5a4fb0; --pm-soft:#ebe8f8;
+  --good:#188046; --bad:#c62828; --warn:#8a5a00; --warn-soft:#fdf0d3;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1115; --surface:#181b22; --fg:#e9ecf2; --muted:#9aa1ae; --line:#2a2f3a; --soft:#20242d;
+  --band:#161a22; --band-fg:#eef1f6; --band-muted:#8e97a8;
+  --accent:#e9ecf2; --on-accent:#12151c;
+  --i1:#79a4e6; --i1-soft:#1a2639; --i2:#ec8a62; --i2-soft:#3a2219;
+  --am:#f0c15f; --am-soft:#382a10; --pm:#a591ea; --pm-soft:#272240;
+  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#181b22; --fg:#e9ecf2; --muted:#9aa1ae; --line:#2a2f3a; --soft:#20242d;
+  --band:#161a22; --band-fg:#eef1f6; --band-muted:#8e97a8;
+  --accent:#e9ecf2; --on-accent:#12151c;
+  --i1:#79a4e6; --i1-soft:#1a2639; --i2:#ec8a62; --i2-soft:#3a2219;
+  --am:#f0c15f; --am-soft:#382a10; --pm:#a591ea; --pm-soft:#272240;
+  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--band)}
+button,input,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--band);color:var(--band-fg);box-shadow:0 6px 18px -12px rgba(0,0,0,.55)}
+header .wrap{padding-block:14px 0;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.45rem;margin:0;letter-spacing:-.01em}
+.acct{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:var(--band-fg);font-weight:700;cursor:pointer;display:grid;place-items:center}
+.tabs{display:flex;gap:4px;margin-inline:-4px}
+.tab{flex:none;border:0;background:transparent;color:var(--band-muted);font-weight:600;font-size:.92rem;padding:10px 12px 12px;cursor:pointer;border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:var(--band-fg);border-bottom-color:var(--band-fg)}
+.tab:focus-visible,.acct:focus-visible{outline:2px solid var(--band-fg);outline-offset:-2px}
+main .wrap{padding-block:14px 60px}
+.banner{margin:0 0 12px;padding:10px 12px;border-radius:12px;font-size:.85rem;background:var(--warn-soft);color:var(--warn)}
+
+/* barra del mese */
+.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.monthbar h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;text-transform:capitalize;white-space:nowrap}
+.nav{display:flex;gap:6px}
+.icon-btn,.txt-btn{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;font-weight:600}
+.icon-btn{width:38px;font-size:1.1rem}
+.txt-btn{padding:0 12px;font-size:.88rem}
+.icon-btn:disabled{opacity:.35;cursor:default}
+.icon-btn:focus-visible,.txt-btn:focus-visible{outline:2px solid var(--accent)}
+
+/* striscia totali in cima alla lista */
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.strip > div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 11px;min-width:0}
+.strip .l{font-size:.74rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.strip .v{font-weight:700;font-size:1.02rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+
+/* lista giorni */
+.days{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.day{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.day:first-child{border-top:0}
+.day:hover{background:var(--soft)}
+.day:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.day.today .dn{background:var(--accent);color:var(--on-accent)}
+.dn{width:44px;height:44px;border-radius:12px;background:var(--soft);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.dn b{font-size:1.05rem}
+.dn span{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;color:inherit;opacity:.75}
+.dmid{min-width:0;display:flex;flex-direction:column;gap:3px}
+.dvals{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.86rem}
+.dvals span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.dsplit{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dnote{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dnote::before{content:"✎ "}
+.dtot{font-weight:700;text-align:right;white-space:nowrap}
+.empty{color:var(--muted);font-size:.86rem}
+.day.vuoto:not(.today) .dn{background:transparent;border:1px dashed var(--line)}
+
+/* riepilogo */
+.cards{display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card h3{margin:0 0 10px;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.big{font-family:var(--f-display);font-weight:700;font-size:2rem;letter-spacing:-.01em;line-height:1.1}
+.sub{color:var(--muted);font-size:.86rem;margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.kpis div{min-width:0}
+.kpis .l{font-size:.74rem;color:var(--muted);font-weight:600}
+.kpis .v{font-weight:700;white-space:nowrap}
+.bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--soft);margin:4px 0 12px}
+.bar i{display:block;height:100%}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.leg{border-radius:12px;padding:10px 12px;min-width:0}
+.leg .l{font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:6px}
+.leg .v{font-size:1.25rem;font-weight:700;margin-top:2px;white-space:nowrap}
+.leg .p{font-size:.86rem;font-weight:600;opacity:.85}
+.leg .x{font-size:.76rem;color:var(--muted);margin-top:4px}
+.diff{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.9rem}
+.diff b{white-space:nowrap}
+.note-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.note-list li{display:grid;grid-template-columns:70px minmax(0,1fr);gap:10px;font-size:.9rem}
+.note-list .d{color:var(--muted);font-weight:600;font-size:.82rem}
+.muted{color:var(--muted)}
+
+/* foglio giorno */
+dialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
+dialog::backdrop{background:rgba(10,12,18,.5)}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;background:var(--surface);color:var(--fg);border-radius:20px 20px 0 0;padding:18px 18px max(18px,env(safe-area-inset-bottom,0px));max-height:92vh;overflow:auto;box-shadow:0 -10px 40px -10px rgba(0,0,0,.4)}
+@media (min-width:620px){.sheet{top:50%;bottom:auto;transform:translateY(-50%);border-radius:20px}}
+.sheet h2{font-family:var(--f-display);font-size:1.3rem;margin:0 0 14px;text-transform:capitalize}
+.field{display:grid;gap:5px;margin-bottom:12px}
+.field label{font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:6px}
+.field .hint{font-weight:500;color:var(--muted)}
+.money{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:0 12px}
+.money:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.money span{color:var(--muted);font-weight:600}
+.money input{border:0;background:transparent;outline:0;padding:11px 8px;width:100%;font-size:1.1rem;font-weight:600;font-variant-numeric:tabular-nums}
+.field.sub-field{margin-left:14px;padding-left:12px;border-left:3px solid var(--am-soft)}
+textarea{width:100%;min-height:76px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:10px 12px;resize:vertical}
+textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.calc{display:flex;justify-content:space-between;gap:10px;background:var(--soft);border-radius:12px;padding:10px 12px;font-size:.88rem;margin-bottom:14px}
+.calc b{white-space:nowrap}
+.err{color:var(--bad);font-size:.85rem;margin:-4px 0 10px}
+.actions{display:flex;gap:8px;justify-content:space-between;align-items:center}
+.actions .r{display:flex;gap:8px}
+.btn{height:44px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font-weight:700;padding:0 18px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn.danger{background:transparent;color:var(--bad);border-color:transparent;padding:0 6px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* menu account */
+.menu{position:absolute;right:16px;top:56px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:220px;box-shadow:0 10px 30px -10px rgba(0,0,0,.35);z-index:20;display:grid;gap:8px}
+.menu p{margin:0;font-size:.82rem;color:var(--muted);word-break:break-all}
+
+.gate{position:fixed;inset:0;z-index:30;background:var(--band);color:var(--band-fg);display:grid;place-items:center;padding:24px;text-align:center}
+.gate > div{max-width:380px}
+.gate h2{font-family:var(--f-display);font-size:1.7rem;margin:0 0 8px}
+.gate p{color:var(--band-muted)}
+.gate .btn{background:var(--band-fg);color:var(--band);border-color:var(--band-fg)}
+.gate .err{color:#ff9d9d;margin-top:12px}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.88rem;font-weight:600;z-index:40;max-width:calc(100% - 32px)}
+.offline{position:fixed;left:0;right:0;bottom:0;background:var(--warn-soft);color:var(--warn);text-align:center;font-size:.82rem;padding:6px;z-index:15}
+@media (max-width:420px){
+  .strip .v{font-size:.92rem}
+  .big{font-size:1.7rem}
+  .leg .v{font-size:1.08rem}
+  .day{grid-template-columns:46px minmax(0,1fr) auto;gap:8px;padding:9px 10px}
+  .dn{width:40px;height:40px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Gestionale Bar</h1>
+      <button class="acct" id="acct" type="button" aria-label="Account">·</button>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
+      <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo del mese</button>
+    </nav>
+  </div>
+</header>
+<div class="menu" id="menu" hidden>
+  <p id="m-email"></p>
+  <button class="btn ghost" id="logoutBtn" type="button">Esci</button>
+</div>
+
+<main>
+  <div class="wrap">
+    <div id="notice"></div>
+    <div class="monthbar">
+      <h2 id="mTitle"></h2>
+      <div class="nav">
+        <button class="icon-btn" id="prev" type="button" aria-label="Mese precedente">‹</button>
+        <button class="txt-btn" id="oggi" type="button">Oggi</button>
+        <button class="icon-btn" id="next" type="button" aria-label="Mese successivo">›</button>
+      </div>
+    </div>
+    <section id="v-giorni"></section>
+    <section id="v-riepilogo" hidden></section>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form class="sheet" id="dayForm" method="dialog" novalidate>
+    <h2 id="dTitle"></h2>
+    <div class="field">
+      <label for="fI1"><span class="dot" style="background:var(--i1)"></span>Incasso1 <span class="hint">· fiscale, totale giornata</span></label>
+      <div class="money"><span>€</span><input id="fI1" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+    </div>
+    <div class="field">
+      <label for="fI2"><span class="dot" style="background:var(--i2)"></span>Incasso2 <span class="hint">· altra attività, totale giornata</span></label>
+      <div class="money"><span>€</span><input id="fI2" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+    </div>
+    <div class="field sub-field">
+      <label for="fAm"><span class="dot" style="background:var(--am)"></span>di cui mattina <span class="hint">· parziale dei due incassi insieme</span></label>
+      <div class="money"><span>€</span><input id="fAm" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+    </div>
+    <div class="calc" id="calc"></div>
+    <div class="field">
+      <label for="fNote">Note</label>
+      <textarea id="fNote" placeholder="Meteo, eventi, chiusure, cose da ricordare…"></textarea>
+    </div>
+    <p class="err" id="fErr" hidden></p>
+    <div class="actions">
+      <button class="btn danger" id="fDel" type="button">Svuota giorno</button>
+      <div class="r">
+        <button class="btn ghost" id="fCancel" type="button">Annulla</button>
+        <button class="btn" id="fSave" type="submit">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="gate" id="gate">
+  <div id="gate-loading"><h2>Gestionale Bar</h2><p id="gate-loading-msg">Apro il gestionale…</p></div>
+  <div id="gate-login" hidden>
+    <h2>Gestionale Bar</h2>
+    <p>Accedi con il tuo account Google per segnare e vedere gli incassi.</p>
+    <button class="btn" id="loginBtn" type="button">Accedi con Google</button>
+    <p class="err" id="gate-login-err" hidden></p>
+  </div>
+  <div id="gate-denied" hidden>
+    <h2>Accesso non abilitato</h2>
+    <p>L'account <b id="gate-email"></b> non è tra quelli dei soci. Entra con un altro account.</p>
+    <button class="btn" id="switchBtn" type="button">Usa un altro account</button>
+  </div>
+  <div id="gate-error" hidden>
+    <h2>Qualcosa non va</h2>
+    <p id="gate-error-msg">Il gestionale non è raggiungibile.</p>
+    <button class="btn" type="button" onclick="location.reload()">Riprova</button>
+  </div>
+</div>
+
+<div class="offline" id="offline" hidden>Sei senza internet: quello che vedi potrebbe non essere aggiornato.</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module">
+/* ---------- utilità ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const TODAY = () => iso(new Date());
+const fMonth = new Intl.DateTimeFormat('it-IT', { month:'long', year:'numeric' });
+const fLong = new Intl.DateTimeFormat('it-IT', { weekday:'long', day:'numeric', month:'long' });
+const fWd = new Intl.DateTimeFormat('it-IT', { weekday:'short' });
+const fEur = new Intl.NumberFormat('it-IT', { style:'currency', currency:'EUR', useGrouping:'always' });
+const fEur0 = new Intl.NumberFormat('it-IT', { style:'currency', currency:'EUR', maximumFractionDigits:0, useGrouping:'always' });
+const fPct = new Intl.NumberFormat('it-IT', { maximumFractionDigits:1, minimumFractionDigits:1 });
+const eur = n => fEur.format(n || 0);
+const pct = (a, tot) => tot > 0 ? fPct.format(a / tot * 100) + '%' : '–';
+const round2 = n => Math.round(n * 100) / 100;
+// Accetta "1.234,50", "1234,5", "1234.50": restituisce null se il campo è vuoto, NaN se non è un numero.
+function money(s){
+  s = String(s || '').trim().replace(/\s|€/g, '');
+  if(!s) return null;
+  if(s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? round2(n) : NaN;
+}
+const toField = n => n == null ? '' : String(n).replace('.', ',');
+let toastT;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500); }
+const ssGet = k => { try{ return sessionStorage.getItem(k); }catch(e){ return null; } };
+const ssSet = (k, v) => { try{ sessionStorage.setItem(k, v); }catch(e){} };
+const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
+
+/* ---------- stato ---------- */
+let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
+let me = null, backend = null;
+let view = ssGet('bar-vista') === 'riepilogo' ? 'riepilogo' : 'giorni';
+let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
+
+const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
+const shiftMonth = (m, k) => { const [y, mo] = m.split('-').map(Number); const d = new Date(y, mo - 1 + k, 1); return iso(d).slice(0, 7); };
+const hasData = g => g && (g.incasso1 != null || g.incasso2 != null || g.mattina != null || (g.note || '').trim());
+
+/* ---------- calcoli del mese ---------- */
+function stats(m){
+  const days = monthDays(m).filter(d => hasData(G[d]));
+  let i1 = 0, i2 = 0, am = 0, pm = 0, splitDays = 0, i1Days = 0, i2Days = 0, best = null, worst = null;
+  for(const d of days){
+    const g = G[d];
+    const a = g.incasso1 || 0, b = g.incasso2 || 0;
+    if(g.incasso1 != null){ i1 += a; i1Days++; }
+    if(g.incasso2 != null){ i2 += b; i2Days++; }
+    // Mattina/pomeriggio: solo i giorni con il parziale segnato, sennò la proporzione si falsa.
+    // Il parziale mattina è sul totale dei due incassi: pomeriggio = Incasso1 + Incasso2 − mattina.
+    if(g.mattina != null && (g.incasso1 != null || g.incasso2 != null)){ am += g.mattina; pm += a + b - g.mattina; splitDays++; }
+    const t = a + b;
+    if(g.incasso1 != null || g.incasso2 != null){
+      if(!best || t > best.t) best = { d, t };
+      if(!worst || t < worst.t) worst = { d, t };
+    }
+  }
+  const tot = i1 + i2;
+  const incDays = days.filter(d => G[d].incasso1 != null || G[d].incasso2 != null).length;
+  return { days, incDays, i1, i2, tot, am, pm, splitDays, i1Days, i2Days, best, worst, media: incDays ? tot / incDays : 0 };
+}
+
+/* ---------- disegno ---------- */
+function render(){
+  const [y, mo] = month.split('-').map(Number);
+  $('mTitle').textContent = fMonth.format(new Date(y, mo - 1, 1));
+  $('next').disabled = month >= TODAY().slice(0, 7);
+  $('oggi').hidden = month === TODAY().slice(0, 7);
+  $('tab-giorni').setAttribute('aria-selected', view === 'giorni');
+  $('tab-riepilogo').setAttribute('aria-selected', view === 'riepilogo');
+  $('v-giorni').hidden = view !== 'giorni';
+  $('v-riepilogo').hidden = view !== 'riepilogo';
+  if(view === 'giorni') renderGiorni(); else renderRiepilogo();
+}
+
+function renderGiorni(){
+  const s = stats(month), today = TODAY();
+  // Mese in corso: fino a oggi; mesi passati: tutti i giorni. Dal più recente.
+  const list = monthDays(month).filter(d => d <= today).reverse();
+  const strip = `<div class="strip">
+    <div><div class="l"><span class="dot" style="background:var(--i1)"></span>Incasso1</div><div class="v num">${fEur0.format(s.i1)}</div></div>
+    <div><div class="l"><span class="dot" style="background:var(--i2)"></span>Incasso2</div><div class="v num">${fEur0.format(s.i2)}</div></div>
+    <div><div class="l">Totale</div><div class="v num">${fEur0.format(s.tot)}</div></div>
+  </div>`;
+  const rows = list.map(d => {
+    const g = G[d], dt = parse(d);
+    const head = `<span class="dn"><b>${dt.getDate()}</b><span>${fWd.format(dt).replace('.', '')}</span></span>`;
+    if(!hasData(g)) return `<button class="day vuoto${d === today ? ' today' : ''}" type="button" data-d="${d}">${head}<span class="dmid"><span class="empty">Da segnare</span></span><span></span></button>`;
+    const vals = [];
+    if(g.incasso1 != null) vals.push(`<span><span class="dot" style="background:var(--i1)"></span><span class="num">${eur(g.incasso1)}</span></span>`);
+    if(g.incasso2 != null) vals.push(`<span><span class="dot" style="background:var(--i2)"></span><span class="num">${eur(g.incasso2)}</span></span>`);
+    const hasInc = g.incasso1 != null || g.incasso2 != null;
+    const split = hasInc && g.mattina != null
+      ? `<span class="dsplit num">Mattina ${eur(g.mattina)} · Pomeriggio ${eur((g.incasso1 || 0) + (g.incasso2 || 0) - g.mattina)}</span>`
+      : hasInc ? `<span class="dsplit">Parziale mattina non segnato</span>` : '';
+    const note = (g.note || '').trim() ? `<span class="dnote">${esc(g.note.trim().split('\n')[0])}</span>` : '';
+    const t = (g.incasso1 || 0) + (g.incasso2 || 0);
+    return `<button class="day${d === today ? ' today' : ''}" type="button" data-d="${d}">${head}<span class="dmid"><span class="dvals">${vals.join('') || '<span class="empty">Solo nota</span>'}</span>${split}${note}</span><span class="dtot num">${vals.length ? fEur0.format(t) : ''}</span></button>`;
+  }).join('');
+  $('v-giorni').innerHTML = strip + (list.length ? `<div class="days">${rows}</div>` : '<p class="muted">Nessun giorno da mostrare.</p>');
+}
+
+function renderRiepilogo(){
+  const s = stats(month), n = monthDays(month).length;
+  if(!s.incDays){
+    $('v-riepilogo').innerHTML = '<div class="card"><p class="muted" style="margin:0">Nessun incasso segnato in questo mese.</p></div>';
+    return;
+  }
+  const dayTxt = d => fLong.format(parse(d));
+  const pmMore = s.pm >= s.am;
+  const diff = Math.abs(s.pm - s.am);
+  const splitTot = s.am + s.pm;
+  const notes = s.days.filter(d => (G[d].note || '').trim());
+  $('v-riepilogo').innerHTML = `<div class="cards">
+    <div class="card">
+      <h3>Totale del mese</h3>
+      <div class="big num">${eur(s.tot)}</div>
+      <div class="sub">${s.incDays} ${s.incDays === 1 ? 'giorno segnato' : 'giorni segnati'} su ${n}</div>
+      <div class="kpis">
+        <div><div class="l">Media al giorno</div><div class="v num">${eur(s.media)}</div></div>
+        <div><div class="l">Giorno migliore</div><div class="v num">${fEur0.format(s.best.t)}</div><div class="sub" style="margin:0;font-size:.74rem">${dayTxt(s.best.d)}</div></div>
+        <div><div class="l">Giorno più basso</div><div class="v num">${fEur0.format(s.worst.t)}</div><div class="sub" style="margin:0;font-size:.74rem">${dayTxt(s.worst.d)}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Incasso1 e Incasso2</h3>
+      <div class="bar" role="img" aria-label="Incasso1 ${pct(s.i1, s.tot)}, Incasso2 ${pct(s.i2, s.tot)}">
+        <i style="width:${s.tot ? s.i1 / s.tot * 100 : 0}%;background:var(--i1)"></i><i style="width:${s.tot ? s.i2 / s.tot * 100 : 0}%;background:var(--i2)"></i>
+      </div>
+      <div class="legend">
+        <div class="leg" style="background:var(--i1-soft)">
+          <div class="l" style="color:var(--i1)"><span class="dot" style="background:var(--i1)"></span>Incasso1</div>
+          <div class="v num">${eur(s.i1)}</div><div class="p num">${pct(s.i1, s.tot)} del totale</div>
+          <div class="x num">Media ${eur(s.i1Days ? s.i1 / s.i1Days : 0)} al giorno</div>
+        </div>
+        <div class="leg" style="background:var(--i2-soft)">
+          <div class="l" style="color:var(--i2)"><span class="dot" style="background:var(--i2)"></span>Incasso2</div>
+          <div class="v num">${eur(s.i2)}</div><div class="p num">${pct(s.i2, s.tot)} del totale</div>
+          <div class="x num">Media ${eur(s.i2Days ? s.i2 / s.i2Days : 0)} al giorno</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Mattina e pomeriggio · totale dei due incassi</h3>
+      ${s.splitDays ? `
+      <div class="bar" role="img" aria-label="Mattina ${pct(s.am, splitTot)}, pomeriggio ${pct(s.pm, splitTot)}">
+        <i style="width:${splitTot ? s.am / splitTot * 100 : 0}%;background:var(--am)"></i><i style="width:${splitTot ? s.pm / splitTot * 100 : 0}%;background:var(--pm)"></i>
+      </div>
+      <div class="legend">
+        <div class="leg" style="background:var(--am-soft)">
+          <div class="l" style="color:var(--am)"><span class="dot" style="background:var(--am)"></span>Mattina</div>
+          <div class="v num">${eur(s.am)}</div><div class="p num">${pct(s.am, splitTot)}</div>
+          <div class="x num">Media ${eur(s.am / s.splitDays)} al giorno</div>
+        </div>
+        <div class="leg" style="background:var(--pm-soft)">
+          <div class="l" style="color:var(--pm)"><span class="dot" style="background:var(--pm)"></span>Pomeriggio</div>
+          <div class="v num">${eur(s.pm)}</div><div class="p num">${pct(s.pm, splitTot)}</div>
+          <div class="x num">Media ${eur(s.pm / s.splitDays)} al giorno</div>
+        </div>
+      </div>
+      <div class="diff">
+        <span>Disparità: il ${pmMore ? 'pomeriggio' : 'mattino'} incassa di più</span>
+        <b class="num">+${eur(diff)}</b>
+      </div>
+      <div class="diff" style="border-top:0;padding-top:0;margin-top:6px">
+        <span class="muted">Rispetto al ${pmMore ? 'mattino' : 'pomeriggio'}</span>
+        <b class="num">+${pct(diff, pmMore ? s.am : s.pm)} · ${fPct.format(splitTot ? diff / splitTot * 100 : 0)} punti di quota</b>
+      </div>
+      ${s.splitDays < s.incDays ? `<p class="sub" style="margin:10px 0 0">Calcolato sui ${s.splitDays} giorni con il parziale mattina segnato (su ${s.incDays} con incassi).</p>` : ''}
+      ` : '<p class="muted" style="margin:0">Nessun parziale mattina segnato in questo mese.</p>'}
+    </div>
+
+    ${notes.length ? `<div class="card"><h3>Note del mese</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${fWd.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
+  </div>`;
+}
+
+/* ---------- foglio giorno ---------- */
+let editing = null;
+function openDay(d){
+  editing = d;
+  const g = G[d] || {};
+  $('dTitle').textContent = fLong.format(parse(d));
+  $('fI1').value = toField(g.incasso1);
+  $('fAm').value = toField(g.mattina);
+  $('fI2').value = toField(g.incasso2);
+  $('fNote').value = g.note || '';
+  $('fErr').hidden = true;
+  $('fDel').hidden = !hasData(g);
+  $('fSave').disabled = false;
+  updCalc();
+  $('dlg').showModal();
+  if(!hasData(g)) setTimeout(() => $('fI1').focus(), 50);
+}
+function readForm(){
+  return { incasso1: money($('fI1').value), mattina: money($('fAm').value), incasso2: money($('fI2').value), note: $('fNote').value.trim() };
+}
+function updCalc(){
+  const f = readForm();
+  const parts = [];
+  const t = (Number.isFinite(f.incasso1) ? f.incasso1 : 0) + (Number.isFinite(f.incasso2) ? f.incasso2 : 0);
+  if(Number.isFinite(f.mattina) && f.mattina <= t)
+    parts.push(`<span>Pomeriggio</span><b class="num">${eur(t - f.mattina)}</b>`);
+  parts.push(`<span>Totale giornata</span><b class="num">${eur(t)}</b>`);
+  $('calc').innerHTML = parts.map(p => `<span style="display:flex;flex-direction:column;gap:2px">${p}</span>`).join('');
+}
+['fI1','fAm','fI2'].forEach(id => $(id).addEventListener('input', updCalc));
+$('fCancel').onclick = () => $('dlg').close();
+$('dlg').addEventListener('click', e => { if(e.target === $('dlg')) $('dlg').close(); });
+$('dayForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = readForm();
+  const err = m => { $('fErr').textContent = m; $('fErr').hidden = false; };
+  if([f.incasso1, f.mattina, f.incasso2].some(v => Number.isNaN(v))) return err('Controlla gli importi: scrivi solo numeri, per esempio 1250,50.');
+  if(f.mattina != null && f.incasso1 == null && f.incasso2 == null) return err('Il parziale mattina va con gli incassi della giornata.');
+  if(f.mattina != null && f.mattina > (f.incasso1 || 0) + (f.incasso2 || 0)) return err('Il parziale mattina non può superare il totale dei due incassi.');
+  $('fSave').disabled = true;
+  try{
+    if(!hasData(f)) await backend.remove(editing);
+    else await backend.save(editing, f);
+    $('dlg').close();
+    toast('Giorno salvato');
+  }catch(e2){ $('fSave').disabled = false; err('Salvataggio non riuscito: ' + (e2.message || 'riprova')); }
+});
+$('fDel').onclick = async () => {
+  if(!confirm('Svuotare questo giorno? Incassi e note verranno cancellati.')) return;
+  try{ await backend.remove(editing); $('dlg').close(); toast('Giorno svuotato'); }
+  catch(e){ toast('Non riuscito: ' + (e.message || 'riprova')); }
+};
+
+/* ---------- navigazione ---------- */
+$('v-giorni').addEventListener('click', e => { const b = e.target.closest('.day'); if(b) openDay(b.dataset.d); });
+const setMonth = m => { month = m; ssSet('bar-mese', m); render(); };
+$('prev').onclick = () => setMonth(shiftMonth(month, -1));
+$('next').onclick = () => setMonth(shiftMonth(month, 1));
+$('oggi').onclick = () => setMonth(TODAY().slice(0, 7));
+const setView = v => { view = v; ssSet('bar-vista', v); render(); window.scrollTo(0, 0); };
+$('tab-giorni').onclick = () => setView('giorni');
+$('tab-riepilogo').onclick = () => setView('riepilogo');
+$('acct').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
+document.addEventListener('click', e => { if(!$('menu').hidden && !$('menu').contains(e.target)) $('menu').hidden = true; });
+$('logoutBtn').onclick = () => { $('menu').hidden = true; backend.logout(); };
+const net = () => $('offline').hidden = navigator.onLine;
+addEventListener('online', net); addEventListener('offline', net); net();
+
+function gate(which, msg){
+  $('gate').hidden = !which;
+  for(const k of ['loading','login','denied','error']) $('gate-' + k).hidden = k !== which;
+  if(which === 'loading' && msg) $('gate-loading-msg').textContent = msg;
+  if(which === 'denied') $('gate-email').textContent = msg || '';
+  if(which === 'error' && msg) $('gate-error-msg').textContent = msg;
+}
+function signedIn(u){
+  me = u;
+  $('acct').textContent = (u.nome || u.email || '?').charAt(0).toUpperCase();
+  $('m-email').textContent = u.email;
+  render();
+}
+
+/* ---------- dati: Firestore oppure modalità prova locale ---------- */
+const LOCAL_HOST = ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+const DEMO = LOCAL_HOST && new URLSearchParams(location.search).has('prova');
+if(DEMO) startDemo(); else startFirebase();
+
+function startDemo(){
+  // Prova sul PC senza login: dati finti degli ultimi due mesi, restano solo in questo browser.
+  const KEY = 'bar-prova-2';
+  let saved = null; try{ saved = JSON.parse(lsGet(KEY) || 'null'); }catch(e){}
+  if(!saved){
+    saved = {};
+    const today = TODAY(), cur = today.slice(0, 7);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for(const m of [shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
+      if(d >= today) continue;
+      const wd = parse(d).getDay(); if(wd === 1) continue;              // lunedì chiuso
+      const we = wd === 0 || wd === 6;
+      const i1 = round2((we ? 1450 : 980) + rnd() * 520);
+      const i2 = round2((we ? 520 : 340) + rnd() * 260);
+      const am = round2((i1 + i2) * (0.36 + rnd() * 0.16));
+      saved[d] = { incasso1: i1, mattina: rnd() < 0.08 ? null : am, incasso2: i2, note: '' };
+    }
+    const ks = Object.keys(saved);
+    if(ks.length > 6){ saved[ks[3]].note = 'Pioggia tutto il giorno, pomeriggio vuoto.'; saved[ks[ks.length - 4]].note = 'Serata con musica dal vivo.'; }
+  }
+  G = saved;
+  const store = () => lsSet(KEY, JSON.stringify(G));
+  backend = {
+    save: async (d, f) => { G = { ...G, [d]: f }; store(); render(); },
+    remove: async d => { const c = { ...G }; delete c[d]; G = c; store(); render(); },
+    logout: async () => { try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); },
+  };
+  $('notice').innerHTML = '<div class="banner">Modalità prova sul PC: dati finti, solo in questo browser. "Esci" dal menu in alto a destra li azzera.</div>';
+  gate(null);
+  signedIn({ email: 'prova@locale', nome: 'Prova' });
+}
+
+async function startFirebase(){
+  gate('loading');
+  const FB_V = '10.12.2';
+  let unsub = null;
+  try{
+    const { firebaseConfig } = await import('./firebase-config.js');
+    const [{ initializeApp }, A, S] = await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${FB_V}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${FB_V}/firebase-auth.js`),
+      import(`https://www.gstatic.com/firebasejs/${FB_V}/firebase-firestore.js`),
+    ]);
+    const app = initializeApp(firebaseConfig);
+    const auth = A.getAuth(app);
+    const db = S.initializeFirestore(app, { localCache: S.persistentLocalCache() });
+    const col = S.collection(db, 'bar_giorni');
+    const nice = e => new Error(e && e.code === 'permission-denied' ? 'permesso negato' : (e && e.message) || 'controlla la connessione');
+    const run = async p => { try{ return await p; }catch(e){ throw nice(e); } };
+
+    backend = {
+      save: (d, f) => run(S.setDoc(S.doc(col, d), { ...f, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
+      remove: d => run(S.deleteDoc(S.doc(col, d))),
+      logout: () => A.signOut(auth),
+    };
+
+    const login = async () => {
+      const provider = new A.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt:'select_account' });
+      $('gate-login-err').hidden = true;
+      try{ await A.signInWithPopup(auth, provider); }
+      catch(e){
+        if(e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+        if(e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-environment'){ try{ await A.signInWithRedirect(auth, provider); return; }catch(e2){ e = e2; } }
+        $('gate-login-err').hidden = false;
+        $('gate-login-err').textContent = e.code === 'auth/network-request-failed' ? 'Accesso non riuscito: sei senza internet.' : e.code === 'auth/unauthorized-domain' ? 'Questo indirizzo non è ancora abilitato in Firebase (Authentication › Settings › Domini autorizzati).' : 'Accesso non riuscito. Riprova.';
+      }
+    };
+    $('loginBtn').onclick = login;
+    $('switchBtn').onclick = async () => { try{ await A.signOut(auth); }catch(e){} login(); };
+    try{ await A.getRedirectResult(auth); }catch(e){}
+
+    A.onAuthStateChanged(auth, user => {
+      if(unsub){ unsub(); unsub = null; }
+      if($('dlg').open) $('dlg').close();
+      if(!user){ me = null; G = {}; gate('login'); return; }
+      gate('loading', 'Carico gli incassi…');
+      let first = true;
+      unsub = S.onSnapshot(col, snap => {
+        G = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
+        if(first){ first = false; gate(null); signedIn({ email: user.email, nome: user.displayName }); } else render();
+      }, err => {
+        if(err.code === 'permission-denied') gate('denied', user.email);
+        else gate('error', 'Il gestionale non è raggiungibile. Controlla la connessione e riprova.');
+      });
+    });
+  }catch(err){ console.error(err); gate('error', 'Non riesco ad avviare l\'app. Controlla la connessione a internet e riprova.'); }
+}
+
+if('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
