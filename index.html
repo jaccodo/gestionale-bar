@@ -1016,18 +1016,19 @@ function signedIn(u){
 
 /* ---------- dati: Firestore oppure modalità prova locale ---------- */
 const LOCAL_HOST = ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-const DEMO = LOCAL_HOST && new URLSearchParams(location.search).has('prova');
+// ?prova apre la simulazione con dati finti (solo nel browser, non tocca il database vero), anche dal sito online.
+const DEMO = new URLSearchParams(location.search).has('prova');
 if(DEMO) startDemo(); else startFirebase();
 
 function startDemo(){
   // Prova sul PC senza login: dati finti degli ultimi due mesi, restano solo in questo browser.
-  const KEY = 'bar-prova-2';
+  const KEY = 'bar-prova-3';
   let saved = null; try{ saved = JSON.parse(lsGet(KEY) || 'null'); }catch(e){}
   if(!saved){
     saved = {};
     const today = TODAY(), cur = today.slice(0, 7);
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for(const m of [shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
+    for(const m of [shiftMonth(cur, -2), shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
       if(d >= today) continue;
       const wd = parse(d).getDay(); if(wd === 1) continue;              // lunedì chiuso
       const we = wd === 0 || wd === 6;
@@ -1040,18 +1041,28 @@ function startDemo(){
     if(ks.length > 6){ saved[ks[3]].note = 'Pioggia tutto il giorno, pomeriggio vuoto.'; saved[ks[ks.length - 4]].note = 'Serata con musica dal vivo.'; }
   }
   G = saved;
-  const KEY_SP = 'bar-prova-spese-1';
+  const KEY_SP = 'bar-prova-spese-2';
   let sp = null; try{ sp = JSON.parse(lsGet(KEY_SP) || 'null'); }catch(e){}
   if(!sp){
+    // Simulazione: 20 spese in tre mesi (due mesi fa, il mese scorso, questo), giorni e voci diversi.
     const today = TODAY(), cur = today.slice(0, 7);
-    const voci = [['pane','a',18],['ghiaccio','b',12],['latte','a',24],['frutta','a',31],['detersivi','c',22],['bicchieri','c',15],['manutenzione frigo','d',80]];
-    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const list = [];
-    for(const m of [shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
-      if(d >= today || parse(d).getDay() === 1) continue;
-      for(const [nome, tipo, base] of voci) if(rnd() < (tipo === 'd' ? 0.03 : 0.22)) list.push({ id: Math.random().toString(36).slice(2, 10), data: d, tipo, nome, importo: round2(base * (0.7 + rnd() * 0.6)), creata: d + 'T09:00' });
-    }
-    sp = { SP: list, TIPI: { a:'Alimentari', b:'Ghiaccio e bevande', c:'Pulizia e consumo', d:'Manutenzione' } };
+    const [m0, m1, m2] = [shiftMonth(cur, -2), shiftMonth(cur, -1), cur];
+    const venti = [
+      [m0, 3, 'a', 'pane', 18.40], [m0, 7, 'b', 'ghiaccio', 12.00], [m0, 12, 'c', 'detersivi', 23.90],
+      [m0, 18, 'a', 'caffè in grani', 64.50], [m0, 25, 'd', 'riparazione lavastoviglie', 145.00], [m0, 29, 'c', 'tovaglioli', 9.80],
+      [m1, 2, 'a', 'latte', 26.30], [m1, 5, 'a', 'limoni', 8.70], [m1, 9, 'b', 'ghiaccio', 15.00],
+      [m1, 14, 'c', 'bicchieri di plastica', 17.60], [m1, 19, 'b', 'acqua minerale', 32.40], [m1, 23, 'd', 'elettricista', 90.00],
+      [m1, 28, 'e', 'volantini serata', 45.00],
+      [m2, 1, 'a', 'pane', 21.10], [m2, 4, 'b', 'sciroppi', 38.75], [m2, 8, 'a', 'menta fresca', 6.50],
+      [m2, 13, 'c', 'sacchi spazzatura', 11.20], [m2, 17, 'b', 'ghiaccio', 13.50], [m2, 21, 'f', 'bombola gas', 52.00],
+      [m2, 24, 'g', 'spesa varia cash & carry', 118.30],
+    ];
+    const list = venti.map(([m, g, tipo, nome, importo], i) => {
+      let d = `${m}-${pad(g)}`; if(d > today) d = today;
+      return { id: 'sim' + i, data: d, tipo, nome, importo, creata: d + 'T09:00' };
+    });
+    // Nomi di esempio: le tipologie vere le decide l'utente.
+    sp = { SP: list, TIPI: { a:'Alimentari', b:'Bevande e ghiaccio', c:'Pulizia e consumo', d:'Manutenzione', e:'Pubblicità', f:'Utenze', g:'Varie' } };
   }
   SP = sp.SP; TIPI = sp.TIPI;
   const storeSp = () => { lsSet(KEY_SP, JSON.stringify({ SP, TIPI })); render(); };
@@ -1063,9 +1074,9 @@ function startDemo(){
     updSpesa: async (id, r) => { SP = SP.map(s => s.id === id ? { ...s, ...r } : s); storeSp(); },
     delSpesa: async id => { SP = SP.filter(s => s.id !== id); storeSp(); },
     setTipi: async t => { TIPI = t; storeSp(); },
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); }catch(e){} location.reload(); },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); }catch(e){} location.href = location.pathname; },
   };
-  $('notice').innerHTML = '<div class="banner">Modalità prova sul PC: dati finti, solo in questo browser. "Esci" dal menu in alto a destra li azzera.</div>';
+  $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
   signedIn({ email: 'prova@locale', nome: 'Prova' });
 }
