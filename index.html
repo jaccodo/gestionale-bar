@@ -259,7 +259,7 @@ main{touch-action:pan-x pan-y}
 .xl.hm col.c-nome{width:120px}
 .xl.hm th,.xl.hm td{padding:7px 6px}
 .chk{display:flex;align-items:center;gap:8px;font-size:.86rem;color:var(--muted);white-space:nowrap}
-.prs-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;margin-bottom:8px}
+.prs-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;gap:10px;align-items:center;margin-bottom:8px}
 
 .xl small.autob{margin-left:6px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 6px}
 .xl tr[data-auto]{cursor:pointer}
@@ -460,7 +460,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
   </form>
 </dialog>
 
-<dialog id="dlgPers">
+<dialog id="dlgPers" class="viz">
   <form class="sheet" id="prsForm" method="dialog" novalidate>
     <h2 style="text-transform:none">Dipendenti</h2>
     <p class="sub" style="margin:-8px 0 14px">Chi è "in servizio" compare ogni mese nella busta paga. Chi non lo è più resta nello storico.</p>
@@ -1154,11 +1154,21 @@ $('stDel').onclick = async () => {
 function drawPers(){
   $('prsRows').innerHTML = PERS.length ? PERS.map(p => `<div class="prs-row"><span class="dot" style="background:${colP(p.id)}"></span>
     <input class="txt" data-p="${p.id}" value="${esc(p.nome)}" maxlength="40" aria-label="Nome">
-    <label class="chk"><input type="checkbox" data-a="${p.id}"${p.attivo !== false ? ' checked' : ''}> in servizio</label></div>`).join('')
+    <label class="chk"><input type="checkbox" data-a="${p.id}"${p.attivo !== false ? ' checked' : ''}> in servizio</label>
+    <button class="btn danger" type="button" data-del="${p.id}" aria-label="Togli ${esc(p.nome)}" style="height:36px">Togli</button></div>`).join('')
     : '<p class="muted" style="margin:0 0 8px">Nessun dipendente ancora.</p>';
 }
 function openPers(){ $('prsErr').hidden = true; $('prsNew').value = ''; drawPers(); $('dlgPers').showModal(); }
 const prsErr = t => { $('prsErr').textContent = t; $('prsErr').hidden = false; };
+$('prsRows').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  const id = b.dataset.del, nome = nomeP(id);
+  const buste = Object.values(ST).filter(r => r.persona === id).length;
+  // Chi ha già buste paga resta nello storico: si toglie solo la spunta "in servizio".
+  if(buste) return prsErr(`${nome} ha già ${buste} ${buste === 1 ? 'busta paga' : 'buste paga'}: togli la spunta "in servizio" e non comparirà più nei mesi nuovi, mentre il suo storico resta nei riepiloghi.`);
+  if(!confirm(`Togliere ${nome} dai dipendenti?`)) return;
+  try{ await backend.delPers(id); drawPers(); toast(`${nome} tolto`); }catch(e2){ prsErr('Non riuscito: ' + (e2.message || 'riprova')); }
+});
 $('prsRows').addEventListener('change', async e => {
   const n = e.target.closest('[data-p]'), a = e.target.closest('[data-a]');
   try{
@@ -1583,6 +1593,7 @@ function startDemo(){
     delSt: async id => { const c = { ...ST }; delete c[id]; ST = c; storeSt(); },
     addPers: async p => { PERS = [...PERS, { ...p, id: 'p' + Math.random().toString(36).slice(2, 8) }]; storeSt(); },
     updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
+    delPers: async id => { PERS = PERS.filter(x => x.id !== id); storeSt(); },
     nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
     logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); }catch(e){} location.href = location.pathname; },
   };
@@ -1624,6 +1635,7 @@ async function startFirebase(){
       delSt: id => run(S.deleteDoc(S.doc(stCol, id))),
       addPers: p => run(S.addDoc(persCol, p)),
       updPers: (id, p) => run(S.updateDoc(S.doc(persCol, id), p)),
+      delPers: id => run(S.deleteDoc(S.doc(persCol, id))),
       // Nomi dei dipendenti dall'app Ferie (collezione ferie_staff, che i soci possono leggere).
       nomiFerie: async () => (await run(S.getDocs(S.collection(db, 'ferie_staff')))).docs.map(d => d.data()).filter(x => x.ruolo !== 'titolare' && x.nome).map(x => x.nome.trim()),
       logout: () => A.signOut(auth),
@@ -1659,10 +1671,22 @@ async function startFirebase(){
           unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
           unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
+          let seedFatto = false;
           unsubs.push(S.onSnapshot(persCol, s5 => {
             PERS = s5.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => String(a.creato || '').localeCompare(String(b.creato || '')) || a.nome.localeCompare(b.nome));
             render(); if($('dlgPers').open) drawPers();
+            // Prima volta in assoluto: carica i dipendenti indicati dall'utente il 2026-11-26 (una volta sola, poi decide l'app).
+            if(!seedFatto && !s5.metadata.fromCache){ seedFatto = true; if(!s5.size) seminaDipendenti().catch(() => {}); }
           }, () => {}));
+          async function seminaDipendenti(){
+            const flag = S.doc(db, 'bar_impostazioni', 'dipendenti');
+            if((await S.getDoc(flag)).exists()) return;
+            const nomi = ['Alice Lucchi', 'Adele Pandolfi', 'Roberto Baiocchi', 'Kelly Sapigna', 'Francesca Piadavolio', 'Soledad Del Prete', 'Lorenzo Morelli'];
+            const b = S.writeBatch(db);
+            nomi.forEach((nome, i) => b.set(S.doc(persCol), { nome, attivo: true, creato: `2026-11-26T00:00:0${i}` }));
+            b.set(flag, { caricati: true, quando: new Date().toISOString(), da: user.email });
+            await b.commit();
+          }
         } else render();
       }, err => {
         if(err.code === 'permission-denied') gate('denied', user.email);
