@@ -112,6 +112,7 @@ table.xl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 
 /* calendario: mese → anno → anni, come Google Calendar */
 .cal{touch-action:pan-y}
+main{touch-action:pan-x pan-y}
 .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px}
 .wk span{font-size:.7rem;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -466,9 +467,17 @@ const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new
 const shiftMonth = (m, k) => { const [y, mo] = m.split('-').map(Number); const d = new Date(y, mo - 1 + k, 1); return iso(d).slice(0, 7); };
 const hasData = g => g && (g.incasso1 != null || g.incasso2 != null || g.mattina != null || (g.note || '').trim());
 
-/* ---------- calcoli del mese ---------- */
+// Giorni di un periodo: 'AAAA-MM' = un mese, 'AAAA' = un anno intero.
+const periodDays = p => p.length === 7 ? monthDays(p) : Array.from({ length: 12 }, (_, i) => monthDays(`${p}-${pad(i + 1)}`)).flat();
+const lvlNow = () => calLevel;
+const periodo = () => calLevel === 'm' ? month : month.slice(0, 4);
+const nomePeriodo = () => calLevel === 'm' ? 'del mese' : 'del ' + month.slice(0, 4);
+const fMs = new Intl.DateTimeFormat('it-IT', { month:'short' });
+const etichetta = p => p.length === 7 ? cap(fMs.format(parse(p + '-01')).replace('.', '')) : p;
+
+/* ---------- calcoli di un periodo (mese o anno) ---------- */
 function stats(m){
-  const days = monthDays(m).filter(d => hasData(G[d]));
+  const days = periodDays(m).filter(d => hasData(G[d]));
   let i1 = 0, i2 = 0, am = 0, pm = 0, splitDays = 0, i1Days = 0, i2Days = 0, best = null, worst = null;
   for(const d of days){
     const g = G[d];
@@ -492,11 +501,11 @@ function stats(m){
 /* ---------- disegno ---------- */
 function render(){
   const [y, mo] = month.split('-').map(Number);
-  const cur = TODAY().slice(0, 7), lvl = view === 'calendario' ? calLevel : 'm';
+  const cur = TODAY().slice(0, 7), lvl = calLevel;
   ssSet('bar-zoom', JSON.stringify({ l: calLevel, ys: yearsStart }));
-  // Titolo: mese, anno o gruppo di anni a seconda dello zoom. Nel calendario si tocca per rimpicciolire.
+  // Titolo: mese, anno o gruppo di anni a seconda dello zoom. In tutte le schede si tocca per rimpicciolire.
   $('mTitle').textContent = lvl === 'm' ? fMonth.format(new Date(y, mo - 1, 1)) : lvl === 'y' ? String(y) : `${yearsStart} – ${yearsStart + 11}`;
-  $('mTitle').classList.toggle('zoom', view === 'calendario' && lvl !== 'a');
+  $('mTitle').classList.toggle('zoom', lvl !== 'a');
   $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
   $('oggi').hidden = lvl === 'm' && month === cur;
   for(const v of ['giorni','calendario','spese','riepilogo']){
@@ -515,6 +524,7 @@ const num = n => n == null ? '' : fNum.format(n);
 
 /* Giorni: tabella tipo Excel, una riga per giorno. */
 function renderGiorni(){
+  if(calLevel !== 'm'){ $('v-giorni').innerHTML = tabellaPeriodi(); return; }
   const s = stats(month), today = TODAY();
   const list = monthDays(month).filter(d => d <= today);
   const cell = (v, cls = '') => v == null ? `<td class="vuoto ${cls}">–</td>` : `<td class="${cls}">${num(v)}</td>`;
@@ -604,7 +614,7 @@ function renderCalYears(){
 }
 const clampMonth = m => m > TODAY().slice(0, 7) ? TODAY().slice(0, 7) : m;
 function zoomOut(){
-  if(view !== 'calendario' || calLevel === 'a') return;
+  if(calLevel === 'a') return;
   if(calLevel === 'm') calLevel = 'y';
   else { calLevel = 'a'; const y = +month.slice(0, 4); if(y < yearsStart || y > yearsStart + 11) yearsStart = y - 6; }
   render();
@@ -612,24 +622,32 @@ function zoomOut(){
 function zoomIn(el){
   if(calLevel === 'a'){ const y = el?.dataset.y ? +el.dataset.y : +month.slice(0, 4); if(y > new Date().getFullYear()) return; month = clampMonth(`${y}-${month.slice(5)}`); calLevel = 'y'; }
   else if(calLevel === 'y'){ if(el?.dataset.m){ if(el.dataset.m > TODAY().slice(0, 7)) return; month = el.dataset.m; } calLevel = 'm'; }
+  else if(el?.dataset.m && el.dataset.m <= TODAY().slice(0, 7)) month = el.dataset.m;
   ssSet('bar-mese', month); render();
 }
 
-/* Riepilogo: tabella con tutte le mensilità dell'anno del mese scelto. */
-function tabellaMesi(){
-  const y = +month.slice(0, 4), curM = TODAY().slice(0, 7);
-  const fM = new Intl.DateTimeFormat('it-IT', { month:'short' });
-  const mesi = [];
-  for(let mi = 0; mi < 12; mi++){ const m = `${y}-${pad(mi + 1)}`; if(m <= curM) mesi.push([m, stats(m)]); }
-  if(!mesi.some(([m, s]) => s.incDays || speseMese(m).list.length)) return '';
+// Mesi dell'anno scelto fino a oggi (zoom mese/anno), oppure anni con dati (zoom anni).
+function periodiTabella(){
+  const curM = TODAY().slice(0, 7), y = +month.slice(0, 4);
+  if(calLevel !== 'a') return Array.from({ length: 12 }, (_, i) => `${y}-${pad(i + 1)}`).filter(m => m <= curM);
+  const anni = new Set([...Object.keys(G), ...SP.map(s => s.data || '')].map(d => d.slice(0, 4)).filter(Boolean));
+  return Array.from({ length: 12 }, (_, i) => String(yearsStart + i)).filter(a => anni.has(a));
+}
+
+/* Tabella con tutte le mensilità dell'anno (o tutti gli anni). Tocca una riga per ingrandire. */
+function tabellaPeriodi(){
+  const periodi = periodiTabella(), anni = calLevel === 'a';
+  const dati = periodi.map(p => [p, stats(p), speseMese(p).totale]);
+  if(!dati.some(([, s, spm]) => s.incDays || spm)) return `<div class="card"><p class="muted" style="margin:0">Nessun dato ${anni ? 'in questi anni' : 'nel ' + month.slice(0, 4)}.</p></div>`;
   const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0, sp: 0 };
-  const rows = mesi.map(([m, s]) => {
-    const spm = speseMese(m).totale;
+  const sel = anni ? month.slice(0, 4) : month;
+  const attr = p => `${anni ? 'data-y' : 'data-m'}="${p}"${p === sel ? ' class="today"' : ''}`;
+  const rows = dati.map(([p, s, spm]) => {
     A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays; A.sp += spm;
     const sp = s.am + s.pm;
-    if(!s.incDays && !spm) return `<tr data-m="${m}"${m === month ? ' class="today"' : ''}><td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td><td class="vuoto" colspan="7">–</td></tr>`;
-    return `<tr tabindex="0" data-m="${m}"${m === month ? ' class="today"' : ''}>
-      <td class="day"><b>${cap(fM.format(parse(m + '-01')).replace('.', ''))}</b></td>
+    if(!s.incDays && !spm) return `<tr tabindex="0" ${attr(p)}><td class="day"><b>${etichetta(p)}</b></td><td class="vuoto" colspan="7">–</td></tr>`;
+    return `<tr tabindex="0" ${attr(p)}>
+      <td class="day"><b>${etichetta(p)}</b></td>
       <td class="am">${num(s.am)}<small class="pc">${s.splitDays ? pct(s.am, sp) : ''}</small></td>
       <td>${num(s.pm)}<small class="pc">${s.splitDays ? pct(s.pm, sp) : ''}</small></td>
       <td>${num(s.i1)}<small class="pc">${pct(s.i1, s.tot)}</small></td>
@@ -640,12 +658,12 @@ function tabellaMesi(){
   }).join('');
   const sp = A.am + A.pm;
   return `<div class="card" style="padding:0;overflow:hidden">
-    <h3 style="padding:14px 16px 0">Tutti i mesi del ${y}</h3>
-    <div style="overflow-x:auto"><table class="xl mesi">
+    <h3 style="padding:14px 16px 0">${anni ? 'Tutti gli anni' : 'Tutti i mesi del ' + month.slice(0, 4)}</h3>
+    <div class="hscroll" style="overflow-x:auto"><table class="xl mesi">
       <colgroup><col class="c-day"><col><col><col><col><col><col></colgroup>
-      <thead><tr><th>Mese</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Spese I2</th></tr></thead>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Spese I2</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td>${y}</td>
+      <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td>
         <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
         <td>${num(A.pm)}<small class="pc">${sp ? pct(A.pm, sp) : ''}</small></td>
         <td>${num(A.i1)}<small class="pc">${pct(A.i1, A.tot)}</small></td>
@@ -653,14 +671,17 @@ function tabellaMesi(){
         <td>${num(A.tot)}<small class="pc">${A.giorni} gg · media ${fNum0.format(A.giorni ? A.tot / A.giorni : 0)}</small></td>
         <td>${num(A.sp)}<small class="pc">${A.i2 ? 'netto I2 ' + fNum0.format(A.i2 - A.sp) : ''}</small></td></tr></tfoot>
     </table></div>
-    <p class="hint" style="padding:0 16px 14px">Tocca un mese per vederne il riepilogo. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale del mese. Spese I2 = spese segnate nella scheda Spese, con Incasso2 al netto.</p>
+    <p class="hint" style="padding:0 16px 14px">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprirlo; tocca il titolo in alto (o pizzica con due dita) per vedere gli anni'}. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale. Spese I2 = spese della scheda Spese, con Incasso2 al netto.</p>
   </div>`;
 }
+const tabellaMesi = tabellaPeriodi;
 
 function renderRiepilogo(){
-  const s = stats(month), n = monthDays(month).length;
+  if(calLevel === 'a'){ $('v-riepilogo').innerHTML = '<div class="cards">' + tabellaPeriodi() + '</div>'; return; }
+  const P = periodo(), NP = nomePeriodo(), today = TODAY();
+  const s = stats(P), n = periodDays(P).filter(d => d <= today).length;
   if(!s.incDays){
-    $('v-riepilogo').innerHTML = '<div class="cards"><div class="card"><p class="muted" style="margin:0">Nessun incasso segnato in questo mese.</p></div>' + tabellaMesi() + '</div>';
+    $('v-riepilogo').innerHTML = `<div class="cards"><div class="card"><p class="muted" style="margin:0">Nessun incasso segnato ${calLevel === 'm' ? 'in questo mese' : 'nel ' + P}.</p></div>` + tabellaMesi() + '</div>';
     return;
   }
   const dayTxt = d => fLong.format(parse(d));
@@ -670,7 +691,7 @@ function renderRiepilogo(){
   const notes = s.days.filter(d => (G[d].note || '').trim());
   $('v-riepilogo').innerHTML = `<div class="cards">
     <div class="card">
-      <h3>Totale del mese</h3>
+      <h3>Totale ${NP}</h3>
       <div class="big num">${eur(s.tot)}</div>
       <div class="sub">${s.incDays} ${s.incDays === 1 ? 'giorno segnato' : 'giorni segnati'} su ${n}</div>
       <div class="kpis">
@@ -699,7 +720,7 @@ function renderRiepilogo(){
       </div>
     </div>
 
-    ${(() => { const sm = speseMese(month); return `<div class="card">
+    ${(() => { const sm = speseMese(P); return `<div class="card">
       <h3>Incasso2 e spese</h3>
       <div class="kpis" style="margin-top:0">
         <div><div class="l">Incasso2</div><div class="v num">${eur(s.i2)}</div></div>
@@ -735,17 +756,42 @@ function renderRiepilogo(){
         <b class="num">+${pct(diff, pmMore ? s.am : s.pm)} · ${fPct.format(splitTot ? diff / splitTot * 100 : 0)} punti di quota</b>
       </div>
       ${s.splitDays < s.incDays ? `<p class="sub" style="margin:10px 0 0">Calcolato sui ${s.splitDays} giorni con il parziale mattina segnato (su ${s.incDays} con incassi).</p>` : ''}
-      ` : '<p class="muted" style="margin:0">Nessun parziale mattina segnato in questo mese.</p>'}
+      ` : `<p class="muted" style="margin:0">Nessun parziale mattina segnato ${calLevel === 'm' ? 'in questo mese' : 'nel ' + P}.</p>`}
     </div>
 
-    ${notes.length ? `<div class="card"><h3>Note del mese</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${fWd.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
+    ${notes.length ? `<div class="card"><h3>Note ${NP}</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${calLevel === 'm' ? fWd.format(parse(d)).replace('.', '') : fMs.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
     ${tabellaMesi()}
   </div>`;
 }
 
 /* ---------- spese Incasso2 ---------- */
+function tabellaSpese(){
+  const periodi = periodiTabella(), anni = calLevel === 'a';
+  const sel = anni ? month.slice(0, 4) : month;
+  let T = 0, I = 0;
+  const rows = periodi.map(p => {
+    const spm = speseMese(p).totale, i2 = stats(p).i2; T += spm; I += i2;
+    return `<tr tabindex="0" ${anni ? 'data-y' : 'data-m'}="${p}"${p === sel ? ' class="today"' : ''}><td class="day"><b>${etichetta(p)}</b></td>
+      <td class="tot">${spm ? num(spm) : '–'}</td><td>${i2 ? num(i2) : '–'}</td>
+      <td style="color:${i2 - spm < 0 ? 'var(--bad)' : 'inherit'}">${i2 || spm ? num(i2 - spm) : '–'}</td><td>${i2 && spm ? pct(spm, i2) : '–'}</td></tr>`;
+  }).join('');
+  if(!rows) return '';
+  return `<div class="sheetwrap"><div class="hscroll" style="overflow-x:auto"><table class="xl" style="min-width:420px">
+    <colgroup><col class="c-day"><col><col><col><col></colgroup>
+    <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>Spese I2</th><th>Incasso2</th><th>I2 − spese</th><th>% spese</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td><td>${num(T)}</td><td>${num(I)}</td><td>${num(I - T)}</td><td>${I && T ? pct(T, I) : ''}</td></tr></tfoot>
+  </table></div></div>
+  <p class="hint">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per vederne le spese; tocca il titolo in alto (o pizzica) per vedere gli anni'}.</p>`;
+}
 function renderSpese(){
-  const sm = speseMese(month), s = stats(month);
+  const top = `<div class="sp-top">
+      <button class="btn add" id="spAdd" type="button">+ Nuova spesa</button>
+      <button class="btn ghost" id="spTipBtn" type="button">Tipologie</button>
+    </div>`;
+  if(calLevel === 'a'){ $('v-spese').innerHTML = top + tabellaSpese(); return; }
+  const P = periodo(), NP = nomePeriodo();
+  const sm = speseMese(P), s = stats(P);
   const netto = s.i2 - sm.totale;
   const list = [...sm.list].sort((a, b) => b.data.localeCompare(a.data) || (b.creata || '').localeCompare(a.creata || ''));
   let prev = '';
@@ -760,13 +806,10 @@ function renderSpese(){
   }).join('');
   const tipiUsati = TIPI_ID.filter(t => sm.perTipo[t]).sort((a, b) => sm.perTipo[b] - sm.perTipo[a]);
   $('v-spese').innerHTML = `
-    <div class="sp-top">
-      <button class="btn add" id="spAdd" type="button">+ Nuova spesa</button>
-      <button class="btn ghost" id="spTipBtn" type="button">Tipologie</button>
-    </div>
+    ${top}
     <div class="cards">
       <div class="card">
-        <h3>Spese Incasso2 del mese</h3>
+        <h3>Spese Incasso2 ${NP}</h3>
         <div class="big num">${eur(sm.totale)}</div>
         <div class="sub">${sm.list.length} ${sm.list.length === 1 ? 'spesa' : 'spese'}</div>
         <div class="kpis">
@@ -778,14 +821,14 @@ function renderSpese(){
       ${tipiUsati.length ? `<div class="card"><h3>Per tipologia</h3><div class="ptipi">${tipiUsati.map(t => `
         <div class="ptipo">${tipoTag(t)}<b class="num">${eur(sm.perTipo[t])}<small>${pct(sm.perTipo[t], sm.totale)}</small></b>
           <div class="b"><i style="width:${sm.perTipo[t] / sm.totale * 100}%;background:${tipoCol(t)}"></i></div></div>`).join('')}</div></div>` : ''}
-      ${list.length ? `<div class="sheetwrap"><table class="xl spese">
+      ${calLevel === 'y' ? tabellaSpese() : list.length ? `<div class="sheetwrap"><table class="xl spese">
         <colgroup><col class="c-day"><col class="c-tipo"><col><col class="c-imp"></colgroup>
         <thead><tr><th>Giorno</th><th class="l">Tipologia</th><th class="l">Spesa</th><th>Importo</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td>Totale</td><td></td><td></td><td>${num(sm.totale)}</td></tr></tfoot>
       </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna spesa segnata in questo mese. Tocca "+ Nuova spesa".</p></div>'}
     </div>
-    <p class="hint">Tocca una riga per correggerla o eliminarla.</p>`;
+    ${calLevel === 'm' ? '<p class="hint">Tocca una riga per correggerla o eliminarla. Tocca il mese in alto (o pizzica) per vedere l\'anno.</p>' : ''}`;
 }
 
 let spEdit = null, spTipo = 'a';
@@ -868,7 +911,8 @@ $('tipForm').addEventListener('submit', async e => {
 $('v-spese').addEventListener('click', e => {
   if(e.target.closest('#spAdd')) return openSpesa(null);
   if(e.target.closest('#spTipBtn')) return openTipi();
-  const r = e.target.closest('tr[data-sp]'); if(r) openSpesa(r.dataset.sp);
+  const r = e.target.closest('tr[data-sp]'); if(r) return openSpesa(r.dataset.sp);
+  const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
 });
 $('v-spese').addEventListener('keydown', e => { const r = e.target.closest('tr[data-sp]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openSpesa(r.dataset.sp); } });
 
@@ -926,13 +970,14 @@ $('fDel').onclick = async () => {
 };
 
 /* ---------- navigazione ---------- */
-$('v-giorni').addEventListener('click', e => { const r = e.target.closest('tr[data-d]'); if(r) openDay(r.dataset.d); });
+$('v-giorni').addEventListener('click', e => { const r = e.target.closest('tr[data-d]'); if(r) return openDay(r.dataset.d); const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z); });
+for(const id of ['v-giorni','v-spese','v-riepilogo']) $(id).addEventListener('keydown', e => { const z = e.target.closest('tr[data-m],tr[data-y]'); if(z && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); zoomIn(z); } });
 $('v-giorni').addEventListener('keydown', e => { const r = e.target.closest('tr[data-d]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openDay(r.dataset.d); } });
-$('v-riepilogo').addEventListener('click', e => { const r = e.target.closest('tr[data-m]'); if(r && r.dataset.m !== month) setMonth(r.dataset.m); });
+$('v-riepilogo').addEventListener('click', e => { const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z); });
 const setMonth = m => { month = m; ssSet('bar-mese', m); render(); };
-// Frecce: nel calendario spostano di un mese, di un anno o di 12 anni a seconda dello zoom.
+// Frecce: spostano di un mese, di un anno o di 12 anni a seconda dello zoom.
 function sposta(k){
-  const lvl = view === 'calendario' ? calLevel : 'm';
+  const lvl = calLevel;
   if(lvl === 'm') setMonth(shiftMonth(month, k));
   else if(lvl === 'y') setMonth(clampMonth(shiftMonth(month, 12 * k)));
   else { yearsStart += 12 * k; render(); }
@@ -947,9 +992,9 @@ $('tab-calendario').onclick = () => setView('calendario');
 $('tab-spese').onclick = () => setView('spese');
 $('tab-riepilogo').onclick = () => setView('riepilogo');
 
-// Calendario: tocco su giorno/mese/anno, pizzico con due dita per lo zoom, scorrimento laterale per cambiare periodo.
+// Tocco su giorno/mese/anno nel calendario; pizzico con due dita, Ctrl+rotella e scorrimento laterale in tutte le schede.
 (() => {
-  const c = $('v-calendario');
+  const c = $('v-calendario'), area = document.querySelector('main');
   let pinch = null, swipe = null, stopClick = 0;
   c.addEventListener('click', e => {
     if(Date.now() - stopClick < 400) return;
@@ -963,12 +1008,13 @@ $('tab-riepilogo').onclick = () => setView('riepilogo');
     if(box && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); zoomIn(box); }
   });
   const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  c.addEventListener('touchstart', e => {
+  area.addEventListener('touchstart', e => {
     if(e.touches.length === 2){ pinch = { d0: dist(e.touches), d: dist(e.touches), x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 }; swipe = null; }
-    else if(e.touches.length === 1 && !pinch) swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    // Le tabelle larghe scorrono di lato: lì lo scorrimento non cambia periodo.
+    else if(e.touches.length === 1 && !pinch && !e.target.closest('.hscroll')) swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
   }, { passive: true });
-  c.addEventListener('touchmove', e => { if(pinch && e.touches.length === 2){ e.preventDefault(); pinch.d = dist(e.touches); } }, { passive: false });
-  c.addEventListener('touchend', e => {
+  area.addEventListener('touchmove', e => { if(pinch && e.touches.length === 2){ e.preventDefault(); pinch.d = dist(e.touches); } }, { passive: false });
+  area.addEventListener('touchend', e => {
     if(pinch && e.touches.length < 2){
       const r = pinch.d / pinch.d0, p = pinch; pinch = null; stopClick = Date.now();
       if(r < 0.75) zoomOut();
@@ -985,8 +1031,9 @@ $('tab-riepilogo').onclick = () => setView('riepilogo');
       swipe = null;
     }
   });
+  area.addEventListener('click', e => { if(Date.now() - stopClick < 400){ e.stopPropagation(); e.preventDefault(); } }, true);
   // Rotella con Ctrl (o pizzico sul touchpad) sul PC: rimpicciolisce/ingrandisce.
-  c.addEventListener('wheel', e => {
+  area.addEventListener('wheel', e => {
     if(!e.ctrlKey) return;
     e.preventDefault();
     if(Date.now() - stopClick < 500) return;
