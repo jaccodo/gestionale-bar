@@ -261,6 +261,9 @@ main{touch-action:pan-x pan-y}
 .chk{display:flex;align-items:center;gap:8px;font-size:.86rem;color:var(--muted);white-space:nowrap}
 .prs-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;margin-bottom:8px}
 
+.xl small.autob{margin-left:6px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 6px}
+.xl tr[data-auto]{cursor:pointer}
+
 /* riepilogo */
 .cards{display:grid;gap:12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
@@ -417,6 +420,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <div class="field">
       <label>Tipologia</label>
       <div class="chips" id="spTipi" role="group" aria-label="Tipologia"></div>
+      <p class="sub" id="spStipHint" hidden style="margin:4px 0 0">Gli stipendi 2 segnati nella scheda Stipendi sono già contati qui da soli: usa questa tipologia solo per altri pagamenti al personale.</p>
     </div>
     <div class="field">
       <label for="spNome">Spesa</label>
@@ -606,8 +610,18 @@ function festivita(y){
 const festa = d => festivita(+d.slice(0, 4))[d] || '';
 const tipoCol = t => `var(--t${Math.max(0, TIPI_ID.indexOf(t))})`;
 const tipoTag = t => `<span class="tipo"><i style="background:${tipoCol(t)}">${t}</i><span>${esc(tipoNome(t))}</span></span>`;
+// Tipologia in cui finisce da sola la somma degli stipendi 2 (dipendenti e soci) di ogni busta paga.
+const TIPO_STIP = 'g';
 function speseMese(m){
   const list = SP.filter(s => s.data && s.data.startsWith(m + '-'));
+  // Stipendi 2 della scheda Stipendi: una spesa automatica per ogni busta paga del periodo (F24 escluso).
+  const mesi = m.length === 7 ? [m] : Array.from({ length: 12 }, (_, i) => `${m}-${pad(i + 1)}`);
+  for(const mm of mesi){
+    const s2 = Object.values(ST).filter(r => r.mese === mm && r.persona !== 'f24').reduce((a, r) => a + (r.s2 || 0), 0);
+    if(!s2) continue;
+    let d = monthDays(mm).slice(-1)[0]; if(d > TODAY()) d = TODAY() < mm + '-01' ? mm + '-01' : TODAY();
+    list.push({ id: 'auto_' + mm, mese: mm, data: d, tipo: TIPO_STIP, nome: 'Stipendi 2 – busta paga', importo: round2(s2), auto: true, creata: '~' });
+  }
   const perTipo = {}; let totale = 0;
   for(const s of list){ totale += s.importo || 0; perTipo[s.tipo] = (perTipo[s.tipo] || 0) + (s.importo || 0); }
   return { list, perTipo, totale: round2(totale) };
@@ -993,7 +1007,7 @@ function renderStMese(){
       </tfoot>
     </table></div>
     <div class="st-actions"><button class="btn ghost" id="prsOpen" type="button">Dipendenti</button></div>
-    <p class="hint">Tocca una riga per segnare stipendio 1 (attività di Incasso1) e stipendio 2 (attività di Incasso2). Tocca il mese in alto (o pizzica) per vedere l'anno contabile.</p>`;
+    <p class="hint">Tocca una riga per segnare stipendio 1 (attività di Incasso1) e stipendio 2 (attività di Incasso2). Gli stipendi 2 contano da soli tra le spese di Incasso2. Tocca il mese in alto (o pizzica) per vedere l'anno contabile.</p>`;
 }
 
 /* Riepilogo stipendi: solo dipendenti, anno contabile (dic–nov). */
@@ -1216,10 +1230,10 @@ function renderSpese(){
   let prev = '';
   const rows = list.map(x => {
     const dt = parse(x.data), nuovo = x.data !== prev; prev = x.data;
-    return `<tr tabindex="0" data-sp="${x.id}"${nuovo ? ' class="gap"' : ''}>
+    return `<tr tabindex="0" ${x.auto ? `data-auto="${x.mese}" title="Calcolata dalla scheda Stipendi: tocca per aprire la busta paga"` : `data-sp="${x.id}"`}${nuovo ? ' class="gap"' : ''}>
       <td class="day">${nuovo ? `<b>${dt.getDate()}</b><small>${fWd.format(dt).replace('.', '')}</small>` : ''}</td>
       <td class="l">${tipoTag(x.tipo)}</td>
-      <td class="nome">${esc(x.nome)}</td>
+      <td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}</td>
       <td class="tot">${num(x.importo)}</td>
     </tr>`;
   }).join('');
@@ -1261,6 +1275,7 @@ function nomiUsati(){
   return [...m.values()].sort((a, b) => b.n - a.n);
 }
 function drawTipi(){
+  $('spStipHint').hidden = spTipo !== TIPO_STIP;
   $('spTipi').innerHTML = TIPI_ID.map(t => `<button type="button" class="chip" data-t="${t}" aria-pressed="${t === spTipo}"><span class="tipo"><i style="background:${tipoCol(t)}">${t}</i><span>${esc(tipoNome(t))}</span></span></button>`).join('');
 }
 function openSpesa(id){
@@ -1331,9 +1346,10 @@ $('v-spese').addEventListener('click', e => {
   if(e.target.closest('#spAdd')) return openSpesa(null);
   if(e.target.closest('#spTipBtn')) return openTipi();
   const r = e.target.closest('tr[data-sp]'); if(r) return openSpesa(r.dataset.sp);
+  const au = e.target.closest('tr[data-auto]'); if(au){ month = au.dataset.auto; ssSet('bar-mese', month); calLevel = 'm'; rsOpen = false; setView('stipendi'); return; }
   const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
 });
-$('v-spese').addEventListener('keydown', e => { const r = e.target.closest('tr[data-sp]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openSpesa(r.dataset.sp); } });
+$('v-spese').addEventListener('keydown', e => { const r = e.target.closest('tr[data-sp],tr[data-auto]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
 
 /* ---------- foglio giorno ---------- */
 let editing = null;
@@ -1508,7 +1524,7 @@ function startDemo(){
     if(ks.length > 6){ saved[ks[3]].note = 'Pioggia tutto il giorno, pomeriggio vuoto.'; saved[ks[ks.length - 4]].note = 'Serata con musica dal vivo.'; }
   }
   G = saved;
-  const KEY_SP = 'bar-prova-spese-4';
+  const KEY_SP = 'bar-prova-spese-5';
   let sp = null; try{ sp = JSON.parse(lsGet(KEY_SP) || 'null'); }catch(e){}
   if(!sp){
     // Simulazione: 20 spese in tre mesi (due mesi fa, il mese scorso, questo), giorni e voci diversi.
@@ -1516,10 +1532,10 @@ function startDemo(){
     const [m0, m1, m2] = [shiftMonth(cur, -2), shiftMonth(cur, -1), cur];
     const venti = [
       [m0, 3, 'a', 'pane', 18.40], [m0, 7, 'd', 'ghiaccio', 12.00], [m0, 12, 'b', 'frutta', 23.90],
-      [m0, 18, 'c', 'cornetti', 64.50], [m0, 25, 'g', 'acconto stipendio', 300.00], [m0, 29, 'e', 'giornali', 9.80],
+      [m0, 18, 'c', 'cornetti', 64.50], [m0, 25, 'h', 'manutenzione macchina caffè', 85.00], [m0, 29, 'e', 'giornali', 9.80],
       [m1, 2, 'a', 'latte', 26.30], [m1, 5, 'b', 'limoni', 8.70], [m1, 9, 'd', 'ghiaccio', 15.00],
       [m1, 14, 'c', 'pasticcini', 37.60], [m1, 19, 'e', 'giornali', 32.40], [m1, 23, 'h', 'tovaglioli', 9.00],
-      [m1, 28, 'g', 'stipendio', 450.00],
+      [m1, 28, 'f', 'pranzo staff', 36.00],
       [m2, 1, 'a', 'pane', 21.10], [m2, 4, 'c', 'cornetti', 38.75], [m2, 8, 'b', 'menta fresca', 6.50],
       [m2, 13, 'e', 'giornali', 11.20], [m2, 17, 'd', 'ghiaccio', 13.50], [m2, 21, 'f', 'pasti staff', 24.00],
       [m2, 24, 'a', 'spesa cash & carry', 118.30],
