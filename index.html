@@ -458,7 +458,7 @@ let SP = [];
 // Tipologie a…h: nomi di base in TIPI_BASE, rinominabili da Spese › Tipologie.
 const TIPI_ID = ['a','b','c','d','e','f','g','h'];
 // Tipologie scelte dall'utente il 2026-11-26. Si possono rinominare da Spese › Tipologie (il nome salvato vince).
-const TIPI_BASE = { a:'Spesa', b:'Frutta/verdura', c:'Pasticceria', d:'Ghiaccio', e:'Giornali', f:'Pasti', g:'Stipendio', h:'Varie' };
+const TIPI_BASE = { a:'Spesa', b:'Frutta/verdura', c:'Pasticceria', d:'Ghiaccio', e:'Giornali', f:'Pasti/staff', g:'Stipendio', h:'Varie' };
 let TIPI = {};
 const tipoNome = t => (TIPI[t] || '').trim() || TIPI_BASE[t] || t.toUpperCase();
 
