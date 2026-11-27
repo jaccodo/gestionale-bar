@@ -1174,7 +1174,6 @@ function renderRiepilogo(){
   const cosa = vista === 'm' ? fMonth.format(parse(month + '-01')) : vista === 'y' ? anno : `media al giorno del ${anno}`;
   const segno = x => `style="color:${x < 0 ? 'var(--bad)' : 'var(--good)'}"`;
   const P = calLevel === 'm' ? month : anno, s = stats(P);
-  const notes = s.days.filter(d => (G[d].note || '').trim());
   const splitTot = s.am + s.pm, pmMore = s.pm >= s.am, diff = Math.abs(s.pm - s.am);
 
   $('v-riepilogo').innerHTML = `<div class="cards">
@@ -1265,7 +1264,6 @@ function renderRiepilogo(){
       ${s.splitDays < s.incDays ? `<p class="sub" style="margin:10px 0 0">Calcolato sui ${s.splitDays} giorni con il parziale mattina segnato (su ${s.incDays} con incassi).</p>` : ''}
     </div>` : ''}
 
-    ${notes.length ? `<div class="card"><h3>Note ${nomePeriodo()}</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${calLevel === 'm' ? fWd.format(parse(d)).replace('.', '') : fMs.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
     ${tabellaMesi()}
   </div>`;
 }
