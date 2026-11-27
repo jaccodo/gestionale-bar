@@ -1035,9 +1035,7 @@ function renderRiepilogo(){
 /* ---------- fatture (Incasso1) ---------- */
 function renderFatture(){
   const top = `<div class="ft-top">
-      <label class="btn add" for="ftFile">Importa PDF / CSV / XML</label>
-      <input type="file" id="ftFile" accept=".pdf,application/pdf,.csv,text/csv,text/plain,.xml,text/xml,application/xml" multiple hidden>
-      <button class="btn ghost" id="ftNew" type="button">+ A mano</button>
+      <button class="btn add" id="ftNew" type="button">+ Fattura a mano</button>
     </div>`;
   const anni = calLevel === 'a';
   const blocco = (titolo, fm, s) => {
@@ -1071,8 +1069,8 @@ function renderFatture(){
         <thead><tr><th>Data</th><th class="l" style="text-align:left">Fornitore</th><th>Imponib.</th><th>IVA</th><th>Totale</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td>Totale</td><td></td><td>${num(fm.imp)}</td><td>${num(fm.iva)}</td><td>${num(fm.tot)}</td></tr></tfoot>
-      </table></div></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna fattura in questo mese. Importa il CSV delle fatture ricevute.</p></div>'}</div>
-      <p class="hint">Importa l'elenco o le singole fatture in PDF (anche CSV o XML della fattura elettronica), oppure inseriscile a mano. Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
+      </table></div></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna fattura in questo mese.</p></div>'}</div>
+      <p class="hint">Le fatture arriveranno da sole dal sistema di cassa; nel frattempo si aggiungono a mano. Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
     return;
   }
   const periodi = periodiTabella();
