@@ -172,6 +172,20 @@ main{touch-action:pan-x pan-y}
 .ybox.fut{opacity:.45;cursor:default}
 .xl small.pc{display:block;font-size:.68rem;font-weight:600;color:var(--muted);line-height:1.1}
 .xl.mesi{min-width:680px}
+.bcard{padding-inline:0;padding-bottom:12px;overflow-x:auto}
+.bcard h3,.bcard > p{padding-inline:16px}
+.xl.bt{font-size:.86rem;table-layout:auto}
+.xl.bt td,.xl.bt th{overflow:visible;text-overflow:clip}
+.xl.bt td:first-child{white-space:nowrap}
+.xl.bt col.c-v{width:27%}
+.xl.bt th,.xl.bt td{padding:8px 8px}
+.xl.bt th:first-child,.xl.bt td:first-child{padding-left:16px}
+.xl.bt th:last-child,.xl.bt td:last-child{padding-right:16px}
+.xl.bt td .dot{width:7px;height:7px;margin-right:5px;vertical-align:1px}
+.xl.bt tbody tr{cursor:default}
+.xl.bt tbody tr:hover td{background:none}
+.xl.bt tr.pct td{font-size:.76rem;color:var(--muted);font-weight:600}
+@media (max-width:420px){.xl.bt{font-size:.76rem}.xl.bt th,.xl.bt td{padding:7px 4px}.xl.bt th:first-child,.xl.bt td:first-child{padding-left:12px}.xl.bt th:last-child,.xl.bt td:last-child{padding-right:12px}.xl.bt col.c-v{width:30%}.xl.bt td .dot{display:none}}
 .muted{color:var(--muted)}
 
 /* spese Incasso2 */
@@ -977,71 +991,157 @@ function tabellaPeriodi(){
 }
 const tabellaMesi = tabellaPeriodi;
 
-function renderRiepilogo(){
-  if(calLevel === 'a'){ $('v-riepilogo').innerHTML = '<div class="cards">' + tabellaPeriodi() + '</div>'; return; }
-  const P = periodo(), NP = nomePeriodo(), today = TODAY();
-  const s = stats(P), n = periodDays(P).filter(d => d <= today).length;
-  if(!s.incDays){
-    $('v-riepilogo').innerHTML = `<div class="cards"><div class="card"><p class="muted" style="margin:0">Nessun incasso segnato ${calLevel === 'm' ? 'in questo mese' : 'nel ' + P}.</p></div>` + tabellaMesi() + '</div>';
-    return;
+// Voci dei costi commerciali: categorie delle fatture (Incasso1) e tipologie delle spese (Incasso2).
+// Tipologie o categorie non elencate finiscono in Generali. Gli stipendi stanno solo nei costi del personale.
+const VOCI_CC = [
+  { nome: 'Servizi', ft: ['Energia elettrica', 'Acqua', 'Telefoniche', 'Vigilanza', 'Pubblicità', 'Consulenze e corsi'], sp: [] },
+  { nome: 'Materie prime', ft: ['Merci'], sp: ['a', 'b', 'c', 'd'] },
+  { nome: 'Affitto', ft: ['Affitto'], sp: [] },
+  { nome: 'Commercialista', ft: ['Contabilità e paghe'], sp: [] },
+  { nome: 'Generali', ft: ['Assicurazioni', 'Imposte varie', 'Spese varie'], sp: ['e', 'h'] },
+  { nome: 'Operativi', ft: ['Materiale consumo', 'Attrezzatura'], sp: ['f'] },
+];
+const VOCE_ALTRO = 4;
+// Primo e ultimo giorno con dati in memoria (incassi, spese, fatture, buste paga), mai oltre oggi.
+function rangeDati(){
+  let a = '', b = '';
+  const add = (x, y = x) => { if(!x) return; if(!a || x < a) a = x; if(!b || y > b) b = y; };
+  for(const [d, g] of Object.entries(G)) if(hasData(g)) add(d);
+  SP.forEach(s => add(s.data)); FT.forEach(f => add(f.data));
+  Object.values(ST).forEach(r => { if(r.mese && stTot(r)) add(r.mese + '-01', monthDays(r.mese).slice(-1)[0]); });
+  const t = TODAY(); if(b > t) b = t; if(a > t) a = t;
+  return { a, b };
+}
+// Giorni di calendario con dati in un periodo ('AAAA-MM', 'AAAA' o '*' = tutto), chiusure comprese.
+function giorniDi(P){
+  let { a, b } = rangeDati(); if(!a) return { n: 0, a: '', b: '' };
+  if(P !== '*'){ const pd = periodDays(P); if(pd[0] > a) a = pd[0]; if(pd[pd.length - 1] < b) b = pd[pd.length - 1]; }
+  return b < a ? { n: 0, a: '', b: '' } : { n: Math.round((parse(b) - parse(a)) / 864e5) + 1, a, b };
+}
+function bil(P){
+  const dentro = d => !!d && (P === '*' || d.startsWith(P + '-'));
+  let i1 = 0, i2 = 0, giorniInc = 0;
+  for(const [d, g] of Object.entries(G)) if(dentro(d) && g){ i1 += g.incasso1 || 0; i2 += g.incasso2 || 0; if(g.incasso1 != null || g.incasso2 != null) giorniInc++; }
+  const voci = VOCI_CC.map(v => ({ nome: v.nome, sp: 0, ft: 0 }));
+  let altri = 0;   // spese segnate a mano con la tipologia Stipendio: vanno nel personale (Incasso2)
+  for(const s of SP){
+    if(!dentro(s.data)) continue;
+    if(s.tipo === TIPO_STIP){ altri += s.importo || 0; continue; }
+    const i = VOCI_CC.findIndex(v => v.sp.includes(s.tipo)); voci[i >= 0 ? i : VOCE_ALTRO].sp += s.importo || 0;
   }
-  const dayTxt = d => fLong.format(parse(d));
-  const pmMore = s.pm >= s.am;
-  const diff = Math.abs(s.pm - s.am);
-  const splitTot = s.am + s.pm;
+  for(const f of FT){
+    if(!dentro(f.data)) continue;
+    const c = catOf(f), i = VOCI_CC.findIndex(v => v.ft.includes(c)); voci[i >= 0 ? i : VOCE_ALTRO].ft += f.totale || 0;
+  }
+  voci.forEach(v => v.tot = v.sp + v.ft);
+  const cc = { sp: voci.reduce((x, v) => x + v.sp, 0), ft: voci.reduce((x, v) => x + v.ft, 0) }; cc.tot = cc.sp + cc.ft;
+  // Buste paga: un mese = la sua busta; un anno = anno contabile (da dicembre dell'anno prima a novembre).
+  const mesi = P === '*' ? null : P.length === 7 ? [P] : mesiAC(+P);
+  const pe = { d1: 0, d2: 0, f24: 0, s1: 0, s2: 0, altri };
+  for(const r of Object.values(ST)){
+    if(mesi && !mesi.includes(r.mese)) continue;
+    if(r.persona === 'f24'){ pe.f24 += r.importo || 0; continue; }
+    if(SOCI.some(s => s.id === r.persona)){ pe.s1 += r.s1 || 0; pe.s2 += r.s2 || 0; }
+    else { pe.d1 += r.s1 || 0; pe.d2 += r.s2 || 0; }
+  }
+  pe.dTot = pe.d1 + pe.d2 + pe.f24; pe.sTot = pe.s1 + pe.s2; pe.tot = pe.dTot + pe.sTot + pe.altri;
+  // Utile: attività 1 = Incasso1 − fatture − stipendi 1 − F24; attività 2 = Incasso2 − spese − stipendi 2.
+  const c1 = cc.ft + pe.d1 + pe.s1 + pe.f24, c2 = cc.sp + pe.d2 + pe.s2 + pe.altri;
+  return { i1, i2, tot: i1 + i2, giorniInc, voci, cc, pe, c1, c2, u1: i1 - c1, u2: i2 - c2, costi: c1 + c2, utile: i1 + i2 - c1 - c2, giorni: giorniDi(P) };
+}
+
+// Vista del riepilogo: anno, mese o media al giorno dell'anno. Senza scelta segue lo zoom.
+let rpVista = ['y', 'm', 'g'].includes(ssGet('bar-rp')) ? ssGet('bar-rp') : '';
+const fGg = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+function renderRiepilogo(){
+  const all = bil('*'), gAll = all.giorni;
+  const costoGiorno = `<div class="card">
+      <h3>Quanto costa il bar al giorno</h3>
+      ${gAll.n ? `<div class="big num">${eur(all.costi / gAll.n)}</div>
+      <div class="sub">Tutti i costi a bilancio (${eur(all.costi)}) ÷ ${gAll.n} giorni di dati in memoria, dal ${fGg.format(parse(gAll.a))} al ${fGg.format(parse(gAll.b))}</div>
+      <div class="kpis">
+        <div><div class="l">Costi commerciali</div><div class="v num">${eur(all.cc.tot / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno</div></div>
+        <div><div class="l">Costi personale</div><div class="v num">${eur(all.pe.tot / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno</div></div>
+        <div><div class="l">Utile</div><div class="v num" style="color:${all.utile < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(all.utile / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno · ricavi ${eur(all.tot / gAll.n)}</div></div>
+      </div>` : '<p class="muted" style="margin:0">Ancora nessun dato.</p>'}
+    </div>`;
+  if(calLevel === 'a'){ $('v-riepilogo').innerHTML = '<div class="cards">' + costoGiorno + tabellaPeriodi() + '</div>'; return; }
+
+  const anno = month.slice(0, 4), vista = rpVista || (calLevel === 'm' ? 'm' : 'y');
+  const b = bil(vista === 'm' ? month : anno);
+  const k = vista === 'g' ? (b.giorni.n || 1) : 1, v = x => num(x / k);
+  const cosa = vista === 'm' ? fMonth.format(parse(month + '-01')) : vista === 'y' ? anno : `media al giorno del ${anno}`;
+  const segno = x => `style="color:${x < 0 ? 'var(--bad)' : 'var(--good)'}"`;
+  const P = calLevel === 'm' ? month : anno, s = stats(P);
   const notes = s.days.filter(d => (G[d].note || '').trim());
+  const splitTot = s.am + s.pm, pmMore = s.pm >= s.am, diff = Math.abs(s.pm - s.am);
+
   $('v-riepilogo').innerHTML = `<div class="cards">
     <div class="card">
-      <h3>Totale ${NP}</h3>
-      <div class="big num">${eur(s.tot)}</div>
-      <div class="sub">${s.incDays} ${s.incDays === 1 ? 'giorno segnato' : 'giorni segnati'} su ${n}</div>
-      <div class="kpis">
-        <div><div class="l">Media al giorno</div><div class="v num">${eur(s.media)}</div></div>
-        <div><div class="l">Giorno migliore</div><div class="v num">${fEur0.format(s.best.t)}</div><div class="sub" style="margin:0;font-size:.74rem">${dayTxt(s.best.d)}</div></div>
-        <div><div class="l">Giorno più basso</div><div class="v num">${fEur0.format(s.worst.t)}</div><div class="sub" style="margin:0;font-size:.74rem">${dayTxt(s.worst.d)}</div></div>
+      <div class="chips" id="rpVista" role="group" aria-label="Periodo del riepilogo">
+        <button type="button" class="chip" data-rp="y" aria-pressed="${vista === 'y'}">Anno ${anno}</button>
+        <button type="button" class="chip" data-rp="m" aria-pressed="${vista === 'm'}">${cap(fMonth.format(parse(month + '-01')))}</button>
+        <button type="button" class="chip" data-rp="g" aria-pressed="${vista === 'g'}">Al giorno</button>
       </div>
+      <p class="sub" style="margin:8px 0 0">${vista === 'g' ? `Valori del ${anno} divisi per ${b.giorni.n} giorni di calendario con dati${b.giorni.n ? ` (dal ${fGg.format(parse(b.giorni.a))} al ${fGg.format(parse(b.giorni.b))})` : ''}.` : `Valori ${vista === 'm' ? 'di ' + cosa : 'del ' + anno}. Stipendi: ${vista === 'm' ? 'busta paga del mese' : 'anno contabile, da dicembre ' + (anno - 1) + ' a novembre ' + anno}.`}</p>
     </div>
 
-    <div class="card">
-      <h3>Incasso1 e Incasso2</h3>
-      <div class="bar" role="img" aria-label="Incasso1 ${pct(s.i1, s.tot)}, Incasso2 ${pct(s.i2, s.tot)}">
-        <i style="width:${s.tot ? s.i1 / s.tot * 100 : 0}%;background:var(--i1)"></i><i style="width:${s.tot ? s.i2 / s.tot * 100 : 0}%;background:var(--i2)"></i>
-      </div>
-      <div class="legend">
-        <div class="leg" style="background:var(--i1-soft)">
-          <div class="l" style="color:var(--i1)"><span class="dot" style="background:var(--i1)"></span>Incasso1</div>
-          <div class="v num">${eur(s.i1)}</div><div class="p num">${pct(s.i1, s.tot)} del totale</div>
-          <div class="x num">Media ${eur(s.i1Days ? s.i1 / s.i1Days : 0)} al giorno</div>
-        </div>
-        <div class="leg" style="background:var(--i2-soft)">
-          <div class="l" style="color:var(--i2)"><span class="dot" style="background:var(--i2)"></span>Incasso2</div>
-          <div class="v num">${eur(s.i2)}</div><div class="p num">${pct(s.i2, s.tot)} del totale</div>
-          <div class="x num">Media ${eur(s.i2Days ? s.i2 / s.i2Days : 0)} al giorno</div>
-        </div>
-      </div>
+    <div class="card bcard">
+      <h3>Ricavi · ${cosa}</h3>
+      <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
+        <thead><tr><th></th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+        <tbody><tr><td>Ricavi</td><td>${v(b.i1)}</td><td>${v(b.i2)}</td><td class="tot">${v(b.tot)}</td></tr>
+          <tr class="pct"><td>Quota</td><td>${pct(b.i1, b.tot)}</td><td>${pct(b.i2, b.tot)}</td><td>${b.tot ? '100%' : '–'}</td></tr></tbody>
+      </table>
+      <p class="sub" style="margin:8px 0 0">${b.giorniInc} ${b.giorniInc === 1 ? 'giorno' : 'giorni'} con incassi${b.giorniInc ? ` · media per giorno aperto ${eur(b.tot / b.giorniInc)}` : ''}</p>
     </div>
 
-    ${(() => { const fm = fattureMese(P); return `<div class="card">
-      <h3>Incasso1 e fatture</h3>
-      <div class="kpis" style="margin-top:0">
-        <div><div class="l">Incasso1</div><div class="v num">${eur(s.i1)}</div></div>
-        <div><div class="l">Fatture</div><div class="v num">${eur(fm.tot)}</div><div class="sub" style="margin:0;font-size:.74rem">${fm.list.length} · ${s.i1 ? pct(fm.tot, s.i1) + ' di Incasso1' : ''}</div></div>
-        <div><div class="l">Incasso1 − fatture</div><div class="v num" style="color:${s.i1 - fm.tot < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(s.i1 - fm.tot)}</div></div>
-      </div>
-    </div>`; })()}
+    <div class="card bcard">
+      <h3>Costi commerciali · ${cosa}</h3>
+      <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
+        <thead><tr><th>Voce</th><th>Spese</th><th>Fatture</th><th>Totale</th></tr></thead>
+        <tbody>${b.voci.map(x => `<tr><td>${x.nome}</td><td>${v(x.sp)}</td><td>${v(x.ft)}</td><td class="tot">${v(x.tot)}<small class="pc">${pct(x.tot, b.cc.tot)}</small></td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>Totale</td><td>${v(b.cc.sp)}</td><td>${v(b.cc.ft)}</td><td>${v(b.cc.tot)}</td></tr></tfoot>
+      </table>
+      <p class="sub" style="margin:8px 0 0">Spese = scheda Spese (Incasso2), fatture = scheda Fatture con IVA (Incasso1). Gli stipendi sono nei costi del personale.</p>
+    </div>
 
-    ${(() => { const sm = speseMese(P); return `<div class="card">
-      <h3>Incasso2 e spese</h3>
-      <div class="kpis" style="margin-top:0">
-        <div><div class="l">Incasso2</div><div class="v num">${eur(s.i2)}</div></div>
-        <div><div class="l">Spese Incasso2</div><div class="v num">${eur(sm.totale)}</div><div class="sub" style="margin:0;font-size:.74rem">${s.i2 ? pct(sm.totale, s.i2) + ' di Incasso2' : ''}</div></div>
-        <div><div class="l">Incasso2 − spese</div><div class="v num" style="color:${s.i2 - sm.totale < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(s.i2 - sm.totale)}</div></div>
-      </div>
-    </div>`; })()}
+    <div class="card bcard">
+      <h3>Costi personale · ${cosa}</h3>
+      <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
+        <thead><tr><th></th><th>Stip. 1</th><th>Stip. 2</th><th>Totale</th></tr></thead>
+        <tbody>
+          <tr class="sez"><td colspan="4">Dipendenti</td></tr>
+          <tr><td>Stipendi</td><td>${v(b.pe.d1)}</td><td>${v(b.pe.d2)}</td><td class="tot">${v(b.pe.d1 + b.pe.d2)}</td></tr>
+          <tr><td>F24</td><td class="vuoto">–</td><td class="vuoto">–</td><td class="tot">${v(b.pe.f24)}</td></tr>
+          <tr class="subt"><td>Totale</td><td>${v(b.pe.d1)}</td><td>${v(b.pe.d2)}</td><td>${v(b.pe.dTot)}</td></tr>
+          <tr class="sez"><td colspan="4">Soci</td></tr>
+          <tr class="subt"><td>Totale</td><td>${v(b.pe.s1)}</td><td>${v(b.pe.s2)}</td><td>${v(b.pe.sTot)}</td></tr>
+          ${b.pe.altri ? `<tr class="sez"><td colspan="4">Altri (scheda Spese)</td></tr><tr class="subt"><td>Stipendi</td><td class="vuoto">–</td><td>${v(b.pe.altri)}</td><td>${v(b.pe.altri)}</td></tr>` : ''}
+        </tbody>
+        <tfoot><tr><td>Totale</td><td>${v(b.pe.d1 + b.pe.s1)}</td><td>${v(b.pe.d2 + b.pe.s2 + b.pe.altri)}</td><td>${v(b.pe.tot)}</td></tr></tfoot>
+      </table>
+      <p class="sub" style="margin:8px 0 0">L'F24 è nel totale e nell'utile dell'attività 1.</p>
+      
+    </div>
 
-    <div class="card">
-      <h3>Mattina e pomeriggio · totale dei due incassi</h3>
-      ${s.splitDays ? `
+    <div class="card bcard">
+      <h3>Utile · ${cosa}</h3>
+      <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
+        <thead><tr><th></th><th>Ricavi</th><th>Costi</th><th>Utile</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot" style="background:var(--i1)"></span>Attività 1</td><td>${v(b.i1)}</td><td>${v(b.c1)}</td><td class="tot" ${segno(b.u1)}>${v(b.u1)}<small class="pc">${b.i1 ? pct(b.u1, b.i1) : ''}</small></td></tr>
+          <tr><td><span class="dot" style="background:var(--i2)"></span>Attività 2</td><td>${v(b.i2)}</td><td>${v(b.c2)}</td><td class="tot" ${segno(b.u2)}>${v(b.u2)}<small class="pc">${b.i2 ? pct(b.u2, b.i2) : ''}</small></td></tr>
+        </tbody>
+        <tfoot><tr><td>Totale</td><td>${v(b.tot)}</td><td>${v(b.costi)}</td><td ${segno(b.utile)}>${v(b.utile)}</td></tr></tfoot>
+      </table>
+      <p class="sub" style="margin:8px 0 0">Attività 1 = Incasso1 − fatture − stipendi 1 (dipendenti e soci) − F24. Attività 2 = Incasso2 − spese − stipendi 2 (dipendenti e soci). La percentuale è l’utile sui ricavi.</p>
+    </div>
+
+    ${costoGiorno}
+
+    ${s.splitDays ? `<div class="card">
+      <h3>Mattina e pomeriggio · ${calLevel === 'm' ? fMonth.format(parse(month + '-01')) : anno}</h3>
       <div class="bar" role="img" aria-label="Mattina ${pct(s.am, splitTot)}, pomeriggio ${pct(s.pm, splitTot)}">
         <i style="width:${splitTot ? s.am / splitTot * 100 : 0}%;background:var(--am)"></i><i style="width:${splitTot ? s.pm / splitTot * 100 : 0}%;background:var(--pm)"></i>
       </div>
@@ -1061,15 +1161,10 @@ function renderRiepilogo(){
         <span>Disparità: il ${pmMore ? 'pomeriggio' : 'mattino'} incassa di più</span>
         <b class="num">+${eur(diff)}</b>
       </div>
-      <div class="diff" style="border-top:0;padding-top:0;margin-top:6px">
-        <span class="muted">Rispetto al ${pmMore ? 'mattino' : 'pomeriggio'}</span>
-        <b class="num">+${pct(diff, pmMore ? s.am : s.pm)} · ${fPct.format(splitTot ? diff / splitTot * 100 : 0)} punti di quota</b>
-      </div>
       ${s.splitDays < s.incDays ? `<p class="sub" style="margin:10px 0 0">Calcolato sui ${s.splitDays} giorni con il parziale mattina segnato (su ${s.incDays} con incassi).</p>` : ''}
-      ` : `<p class="muted" style="margin:0">Nessun parziale mattina segnato ${calLevel === 'm' ? 'in questo mese' : 'nel ' + P}.</p>`}
-    </div>
+    </div>` : ''}
 
-    ${notes.length ? `<div class="card"><h3>Note ${NP}</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${calLevel === 'm' ? fWd.format(parse(d)).replace('.', '') : fMs.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
+    ${notes.length ? `<div class="card"><h3>Note ${nomePeriodo()}</h3><ul class="note-list">${notes.map(d => `<li><span class="d">${parse(d).getDate()} ${calLevel === 'm' ? fWd.format(parse(d)).replace('.', '') : fMs.format(parse(d)).replace('.', '')}</span><span>${esc(G[d].note.trim()).replace(/\n/g, '<br>')}</span></li>`).join('')}</ul></div>` : ''}
     ${tabellaMesi()}
   </div>`;
 }
@@ -1853,7 +1948,10 @@ $('fDel').onclick = async () => {
 $('v-giorni').addEventListener('click', e => { const r = e.target.closest('tr[data-d]'); if(r) return openDay(r.dataset.d); const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z); });
 for(const id of ['v-giorni','v-spese','v-riepilogo']) $(id).addEventListener('keydown', e => { const z = e.target.closest('tr[data-m],tr[data-y]'); if(z && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); zoomIn(z); } });
 $('v-giorni').addEventListener('keydown', e => { const r = e.target.closest('tr[data-d]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openDay(r.dataset.d); } });
-$('v-riepilogo').addEventListener('click', e => { const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z); });
+$('v-riepilogo').addEventListener('click', e => {
+  const c = e.target.closest('[data-rp]'); if(c){ rpVista = c.dataset.rp; ssSet('bar-rp', rpVista); render(); return; }
+  const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
+});
 const setMonth = m => { month = m; ssSet('bar-mese', m); render(); };
 // Frecce: spostano di un mese, di un anno o di 12 anni a seconda dello zoom.
 function sposta(k){
