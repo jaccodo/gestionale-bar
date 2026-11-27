@@ -224,19 +224,16 @@ main{touch-action:pan-x pan-y}
 .cerca .cerca-sum{display:flex;justify-content:space-between;gap:8px;font-size:.84rem;color:var(--muted);margin:2px 0 8px}
 .cerca .cerca-sum b{color:var(--fg)}
 .cerca .xl td.day small{display:block;margin-left:0}
-/* Mettere / rimettere: appunti liberi, testo in grassetto */
-.rim{margin-bottom:12px}
-.rim h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.rim h3 small{font-size:.72rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)}
-.rim textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);
-  padding:10px 12px;font:inherit;font-weight:700;font-size:.95rem;line-height:1.45}
-.rim textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
 .tipo{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
 .tipo i{width:18px;height:18px;border-radius:5px;flex:none;display:grid;place-items:center;font-style:normal;font-size:.66rem;font-weight:800;color:#fff;text-transform:uppercase}
 .tipo span{overflow:hidden;text-overflow:ellipsis}
 .xl.spese col.c-tipo{width:30%}
 .xl.spese col.c-imp{width:96px}
 .xl.spese td.nome{text-align:left;white-space:normal}
+/* Mettere / rimettere della singola spesa: in grassetto sotto il nome */
+.xl.spese td.nome .rim-n{display:block;font-weight:700;font-size:.82rem;color:var(--fg);margin-top:2px;white-space:normal}
+.xl.spese td.nome .rim-n::before{content:"↺ ";color:var(--i2)}
+textarea.txt{width:100%;min-height:64px;resize:vertical;font:inherit;font-weight:700;line-height:1.4;padding:10px 12px}
 .xl.spese th.l,.xl.spese td.l{text-align:left}
 .xl.spese tr.gap td{border-top:2px solid var(--line)}
 .ptipi{display:grid;gap:8px}
@@ -523,6 +520,10 @@ body.lim .solo-pieno{display:none!important}
     <div class="field">
       <label for="spImp">Importo</label>
       <div class="money"><span>€</span><input id="spImp" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+    </div>
+    <div class="field">
+      <label for="spRim">Mettere / rimettere <span class="hint">· facoltativo: soldi da riavere o da rimettere</span></label>
+      <textarea class="txt" id="spRim" rows="2" maxlength="300" placeholder="Es. riavere da Claudio · rimettere in cassa"></textarea>
     </div>
     <p class="err" id="spErr" hidden></p>
     <div class="actions">
@@ -1163,25 +1164,6 @@ function bil(P){
 // Vista del riepilogo: anno, mese o media al giorno dell'anno. Senza scelta segue lo zoom.
 // Aliquota IVA media sugli incassi di Incasso1, per l'utile netto (bar_impostazioni/iva). Di base 10% (somministrazione).
 let IVA_INC = 10;
-// Appunti "Mettere / rimettere" (bar_impostazioni/rimettere.testo), uguali per tutti i soci.
-let RIM = '';
-const rimBox = document.createElement('div');
-rimBox.className = 'card rim';
-rimBox.innerHTML = '<h3><span class="p2">Mettere / rimettere</span><small id="rimStato"></small></h3><textarea id="rimTxt" aria-label="Mettere / rimettere" placeholder="Es. riavere 20 € Claudio per il pane · rimettere in cassa 93 € amazon"></textarea>';
-const rimTxt = rimBox.querySelector('#rimTxt'), rimStato = rimBox.querySelector('#rimStato');
-let rimT = null;
-rimTxt.addEventListener('input', () => {
-  rimStato.textContent = 'Non salvato…';
-  clearTimeout(rimT);
-  rimT = setTimeout(async () => {
-    const t = rimTxt.value;
-    try{ await backend.setRim(t); RIM = t; rimStato.textContent = 'Salvato'; }
-    catch(e){ rimStato.textContent = 'Non salvato: ' + (e.message || 'riprova'); }
-  }, 700);
-});
-// Dal database: aggiorna la casella solo se non ci si sta scrivendo.
-function aggiornaRim(t){ RIM = t || ''; if(document.activeElement !== rimTxt && rimTxt.value !== RIM){ rimTxt.value = RIM; rimStato.textContent = ''; } }
-function mettiRim(){ const s = $('rimSlot'); if(s) s.replaceWith(rimBox); if(document.activeElement !== rimTxt && rimTxt.value !== RIM) rimTxt.value = RIM; }
 async function cambiaIva(){
   const v = prompt('IVA media sugli incassi di Incasso1, in % (di solito 10 per il bar):', String(IVA_INC).replace('.', ','));
   if(v == null) return;
@@ -1939,7 +1921,7 @@ function renderSpese(){
       <button class="btn ghost" id="spCerca" type="button" aria-pressed="${cercaAperta}" aria-label="Cerca nelle spese">🔍 Cerca</button>
     </div>
     <div id="cercaSlot"></div>`;
-  if(calLevel === 'a'){ $('v-spese').innerHTML = top + '<div id="rimSlot"></div>' + tabellaSpese(); mettiRim(); mettiCerca(); return; }
+  if(calLevel === 'a'){ $('v-spese').innerHTML = top + tabellaSpese(); mettiCerca(); return; }
   const P = periodo();
   const sm = speseMese(P);
   const list = [...sm.list].sort((a, b) => b.data.localeCompare(a.data) || (b.creata || '').localeCompare(a.creata || ''));
@@ -1949,7 +1931,7 @@ function renderSpese(){
     return `<tr tabindex="0" ${x.auto ? `data-auto="${x.mese}" title="Calcolata dalla scheda Stipendi: tocca per aprire la busta paga"` : `data-sp="${x.id}"`}${nuovo ? ' class="gap"' : ''}>
       <td class="day">${nuovo ? `<b>${dt.getDate()}</b><small>${fWd.format(dt).replace('.', '')}</small>` : ''}</td>
       <td class="l">${tipoTag(x.tipo)}</td>
-      <td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}</td>
+      <td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}${x.rimettere ? `<b class="rim-n">${esc(x.rimettere)}</b>` : ''}</td>
       <td class="tot">${num(x.importo)}</td>
     </tr>`;
   }).join('');
@@ -1961,7 +1943,6 @@ function renderSpese(){
         <h3><span class="p2">Totale spese</span> · ${calLevel === 'm' ? fMonth.format(parse(month + '-01')) : month.slice(0, 4)}</h3>
         <div class="big num">${eur(sm.totale)}</div>
       </div>
-      <div id="rimSlot"></div>
       ${tipiUsati.length ? `<div class="card"><h3>Per tipologia</h3><div class="ptipi">${tipiUsati.map(t => `
         <div class="ptipo">${tipoTag(t)}<b class="num">${eur(sm.perTipo[t])}<small>${pct(sm.perTipo[t], sm.totale)}</small></b>
           <div class="b"><i style="width:${sm.perTipo[t] / sm.totale * 100}%;background:${tipoCol(t)}"></i></div></div>`).join('')}</div></div>` : ''}
@@ -1973,7 +1954,7 @@ function renderSpese(){
       </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna spesa segnata in questo mese. Tocca "+ Nuova spesa".</p></div>'}
     </div>
     ${calLevel === 'm' ? '<p class="hint">Tocca una riga per correggerla o eliminarla. Tocca il mese in alto (o pizzica) per vedere l\'anno.</p>' : ''}`;
-  mettiRim(); mettiCerca();
+  mettiCerca();
 }
 
 /* Ricerca su tutte le spese (anche le automatiche degli stipendi 2): nome, tipologia, giorno o importo.
@@ -1994,7 +1975,7 @@ function disegnaCerca(){
   if(!q.length){ cercaRis.innerHTML = '<p class="muted" style="margin:0;font-size:.85rem">Scrivi cosa cerchi: cerca in tutti i mesi.</p>'; return; }
   const ris = tutteLeSpese().filter(x => {
     const dt = parse(x.data);
-    const t = piega([x.nome, tipoNome(x.tipo), x.data, `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`, fMonth.format(dt), num(x.importo), String(x.importo)].join(' '));
+    const t = piega([x.nome, x.rimettere, tipoNome(x.tipo), x.data, `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`, fMonth.format(dt), num(x.importo), String(x.importo)].join(' '));
     return q.every(p => t.includes(p));
   }).sort((a, b) => b.data.localeCompare(a.data));
   const tot = ris.reduce((a, x) => a + (x.importo || 0), 0), max = 300;
@@ -2004,7 +1985,7 @@ function disegnaCerca(){
       <thead><tr><th>Giorno</th><th class="l">Tipologia</th><th class="l">Spesa</th><th>Importo</th></tr></thead>
       <tbody>${ris.slice(0, max).map(x => { const dt = parse(x.data); return `<tr tabindex="0" ${x.auto ? `data-auto="${x.mese}"` : `data-sp="${x.id}"`}>
         <td class="day"><b>${dt.getDate()}</b><small>${fMs.format(dt).replace('.', '')} ${String(dt.getFullYear()).slice(2)}</small></td>
-        <td class="l">${tipoTag(x.tipo)}</td><td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}</td><td class="tot">${num(x.importo)}</td></tr>`; }).join('')}</tbody>
+        <td class="l">${tipoTag(x.tipo)}</td><td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}${x.rimettere ? `<b class="rim-n">${esc(x.rimettere)}</b>` : ''}</td><td class="tot">${num(x.importo)}</td></tr>`; }).join('')}</tbody>
       <tfoot><tr><td>Totale</td><td></td><td></td><td>${num(tot)}</td></tr></tfoot>
     </table></div>` : '<p class="muted" style="margin:0">Nessuna spesa trovata.</p>';
 }
@@ -2042,6 +2023,7 @@ function openSpesa(id){
   $('spData').max = today;
   $('spNome').value = x ? x.nome : '';
   $('spImp').value = x ? toField(x.importo) : '';
+  $('spRim').value = x ? (x.rimettere || '') : '';
   $('spNomi').innerHTML = nomi.map(n => `<option value="${esc(n.nome)}">`).join('');
   $('spSugg').innerHTML = x ? '' : nomi.slice(0, 8).map(n => `<button type="button" data-n="${esc(n.nome)}" data-t="${n.tipo}">${esc(n.nome)}</button>`).join('');
   $('spErr').hidden = true;
@@ -2064,7 +2046,7 @@ $('spForm').addEventListener('submit', async e => {
   if(data > TODAY()) return err('Il giorno non può essere nel futuro.');
   if(!nome) return err('Scrivi il nome della spesa (es. pane, ghiaccio).');
   if(importo == null || Number.isNaN(importo) || importo <= 0) return err('Scrivi un importo valido, per esempio 12,50.');
-  const rec = { data, tipo: spTipo, nome, importo };
+  const rec = { data, tipo: spTipo, nome, importo, rimettere: $('spRim').value.trim() };
   $('spSave').disabled = true;
   try{
     if(spEdit) await backend.updSpesa(spEdit, rec); else await backend.addSpesa(rec);
@@ -2491,7 +2473,6 @@ function startDemo(){
     addFatture: async list => { FT = [...FT, ...list]; storeFt(); },
     setPromemoria: async p => { lsSet('bar-prova-prom', JSON.stringify(p)); },
     setIva: async n => lsSet('bar-prova-iva', String(n)),
-    setRim: async t => lsSet('bar-prova-rim', t),
     setCatFt: async m => { CATF = m; lsSet('bar-prova-catft', JSON.stringify(CATF)); render(); if($('dlgCat').open) drawCat(); },
     setFtCat: async (id, c) => { FT = FT.map(f => f.id === id ? (c ? { ...f, categoria: c } : (({ categoria, ...r }) => r)(f)) : f); storeFt(); },
     delFattura: async id => { FT = FT.filter(f => f.id !== id); storeFt(); },
@@ -2503,7 +2484,6 @@ function startDemo(){
     logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); localStorage.removeItem('bar-prova-catft'); localStorage.removeItem('bar-prova-accesso'); localStorage.removeItem('bar-prova-iva'); }catch(e){} location.href = location.pathname; },
   };
   { const v = Number(lsGet('bar-prova-iva')); if(lsGet('bar-prova-iva') && Number.isFinite(v)) IVA_INC = v; }
-  aggiornaRim(lsGet('bar-prova-rim') || 'riavere 14 € Claudio (pane del 27)\nrimettere in cassa 93 € amazon');
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
   signedIn({ email: 'prova@locale', nome: 'Prova' });
@@ -2550,7 +2530,6 @@ async function startFirebase(){
       delFattura: id => run(S.deleteDoc(S.doc(ftCol, id))),
       setCatFt: m => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), { mappa: m, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setFtCat: (id, c) => run(S.updateDoc(S.doc(ftCol, id), { categoria: c ? c : S.deleteField() })),
-      setRim: t => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'rimettere'), { testo: t, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setIva: n => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'iva'), { aliquota: n, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setPromemoria: p => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), { ...p, da: auth.currentUser.email })),
       getAccesso: async () => { const s = await run(S.getDoc(S.doc(db, 'bar_impostazioni', 'accesso'))); return s.exists() ? s.data() : null; },
@@ -2585,7 +2564,7 @@ async function startFirebase(){
       if(unsub){ unsub(); unsub = null; }
       unsubs.forEach(u => u()); unsubs = [];
       for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt','dlgFtEd','dlgProm','dlgCat']) if($(d).open) $(d).close();
-      if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; CATF = {}; aggiornaRim(''); rsOpen = false; gate('login'); return; }
+      if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; CATF = {}; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
       unsub = S.onSnapshot(col, snap => {
@@ -2596,7 +2575,6 @@ async function startFirebase(){
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
           unsubs.push(S.onSnapshot(ftCol, s6 => { FT = s6.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), s8 => { CATF = (s8.exists() && s8.data().mappa) || {}; render(); if($('dlgCat').open) drawCat(); }, () => {}));
-          unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'rimettere'), s10 => aggiornaRim(s10.exists() ? s10.data().testo : ''), () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'iva'), s9 => { const a = s9.exists() ? Number(s9.data().aliquota) : NaN; IVA_INC = Number.isFinite(a) ? a : 10; render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), s7 => { promStato = s7.exists() ? s7.data() : null; }, () => {}));
           unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
