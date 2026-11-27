@@ -214,6 +214,16 @@ main{touch-action:pan-x pan-y}
 .sp-top{display:flex;gap:8px;margin-bottom:12px}
 .sp-top .btn{height:40px;padding:0 14px}
 .sp-top .btn.add{flex:1}
+.sp-top #spCerca[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+/* Ricerca nelle spese */
+.cerca{margin-bottom:12px}
+.cerca .cerca-in{display:flex;gap:8px;align-items:center}
+.cerca input{flex:1;min-width:0;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);padding:0 12px;font:inherit;font-size:1rem}
+.cerca input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.cerca .cerca-ris{margin-top:10px}
+.cerca .cerca-sum{display:flex;justify-content:space-between;gap:8px;font-size:.84rem;color:var(--muted);margin:2px 0 8px}
+.cerca .cerca-sum b{color:var(--fg)}
+.cerca .xl td.day small{display:block;margin-left:0}
 /* Mettere / rimettere: appunti liberi, testo in grassetto */
 .rim{margin-bottom:12px}
 .rim h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -311,6 +321,7 @@ main{touch-action:pan-x pan-y}
 .ft-top{display:flex;gap:8px;margin-bottom:12px}
 .ft-top .btn{height:40px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .ft-top .btn.add{flex:1;text-align:center}
+.ft-top #ftCerca[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 @media (max-width:420px){.ft-top{flex-wrap:wrap}.ft-top .btn.add{flex-basis:100%}.ft-top .btn.ghost{flex:1}}
 .sel{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);padding:8px 10px;font:inherit}
 .catrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,46%);gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
@@ -1297,13 +1308,51 @@ function renderRiepilogo(){
 /* ---------- fatture (Incasso1) ---------- */
 // Elenco fornitori: i primi 12, oppure tutti dopo aver toccato "mostra tutti".
 let fornTutti = false;
+/* Ricerca su tutte le fatture: ogni parola scritta deve comparire in fornitore, numero, categoria, P.IVA, giorno o importo. */
+let ftCercaAperta = false;
+const ftCercaBox = document.createElement('div');
+ftCercaBox.className = 'card cerca';
+ftCercaBox.innerHTML = '<div class="cerca-in"><input id="ftCercaTxt" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca: fornitore, numero, categoria, importo…" aria-label="Cerca nelle fatture"><button class="btn ghost" id="ftCercaChiudi" type="button">Chiudi</button></div><div class="cerca-ris" id="ftCercaRis"></div>';
+const ftCercaTxt = ftCercaBox.querySelector('#ftCercaTxt'), ftCercaRis = ftCercaBox.querySelector('#ftCercaRis');
+function disegnaCercaFt(){
+  const q = piega(ftCercaTxt.value).split(/\s+/).filter(Boolean);
+  if(!q.length){ ftCercaRis.innerHTML = '<p class="muted" style="margin:0;font-size:.85rem">Scrivi cosa cerchi: cerca in tutte le fatture.</p>'; return; }
+  const ris = FT.filter(f => {
+    if(!f.data) return false;
+    const dt = parse(f.data);
+    const t = piega([f.fornitore, f.numero, f.tipo, catOf(f), f.piva, f.data, `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`, fMonth.format(dt), num(f.totale), num(f.imponibile), String(f.totale)].join(' '));
+    return q.every(p => t.includes(p));
+  }).sort((a, b) => b.data.localeCompare(a.data));
+  const tot = ris.reduce((a, f) => a + (f.totale || 0), 0), imp = ris.reduce((a, f) => a + (f.imponibile || 0), 0), iva = ris.reduce((a, f) => a + (f.iva || 0), 0), max = 300;
+  ftCercaRis.innerHTML = ris.length ? `<div class="cerca-sum"><span>${ris.length} ${ris.length === 1 ? 'fattura trovata' : 'fatture trovate'}${ris.length > max ? ` (mostro le ultime ${max})` : ''}</span><b class="num">${eur(tot)}</b></div>
+    <div class="sheetwrap"><div class="hscroll" style="overflow-x:auto"><table class="xl ft" style="min-width:440px">
+      <colgroup><col class="c-day"><col class="c-forn"><col style="width:84px"><col style="width:72px"><col style="width:90px"></colgroup>
+      <thead><tr><th>Data</th><th class="l" style="text-align:left">Fornitore</th><th>Imponib.</th><th>IVA</th><th>Totale</th></tr></thead>
+      <tbody>${ris.slice(0, max).map(f => { const dt = parse(f.data); return `<tr tabindex="0" data-ft="${esc(f.id)}">
+        <td class="day"><b>${dt.getDate()}</b><small>${fMs.format(dt).replace('.', '')} ${String(dt.getFullYear()).slice(2)}</small></td>
+        <td class="forn">${esc(f.fornitore)}<small>${esc(catOf(f))} · ${esc(/credito/i.test(f.tipo) ? 'Nota di credito ' : 'N. ')}${esc(f.numero)}</small></td>
+        <td${f.totale < 0 ? ' class="neg"' : ''}>${num(f.imponibile)}</td><td${f.totale < 0 ? ' class="neg"' : ''}>${num(f.iva)}</td><td class="tot${f.totale < 0 ? ' neg' : ''}">${num(f.totale)}</td></tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>Totale</td><td></td><td>${num(imp)}</td><td>${num(iva)}</td><td>${num(tot)}</td></tr></tfoot>
+    </table></div></div>` : '<p class="muted" style="margin:0">Nessuna fattura trovata.</p>';
+}
+ftCercaTxt.addEventListener('input', disegnaCercaFt);
+ftCercaBox.querySelector('#ftCercaChiudi').addEventListener('click', () => { ftCercaAperta = false; ftCercaTxt.value = ''; render(); });
+function mettiCercaFt(){
+  const s = $('ftCercaSlot'); if(!s) return;
+  if(ftCercaAperta){ s.replaceWith(ftCercaBox); disegnaCercaFt(); } else s.remove();
+}
 function renderFatture(){
+  renderFatture0(); mettiCercaFt();
+}
+function renderFatture0(){
   const top = `<div class="ft-top">
       <label class="btn add" for="ftFile">Importa fatture</label>
       <input type="file" id="ftFile" accept=".csv,text/csv,text/plain,.xml,text/xml,application/xml" multiple hidden>
       <button class="btn ghost" id="ftNew" type="button">+ A mano</button>
       <button class="btn ghost" id="ftCat" type="button">Categorie</button>
-    </div>`;
+      <button class="btn ghost" id="ftCerca" type="button" aria-pressed="${ftCercaAperta}" aria-label="Cerca nelle fatture">🔍 Cerca</button>
+    </div>
+    <div id="ftCercaSlot"></div>`;
   const anni = calLevel === 'a';
   const blocco = (titolo, fm, s) => {
     const netto = s.i1 - fm.tot;
@@ -1531,6 +1580,7 @@ $('v-fatture').addEventListener('click', e => {
   if(e.target.closest('#ftNew')) return apriModuloFattura(null, false);
   if(e.target.closest('[data-forn-tutti]')){ fornTutti = !fornTutti; render(); return; }
   if(e.target.closest('#ftCat')){ drawCat(); $('dlgCat').showModal(); return; }
+  if(e.target.closest('#ftCerca')){ ftCercaAperta = !ftCercaAperta; if(!ftCercaAperta) ftCercaTxt.value = ''; render(); if(ftCercaAperta) setTimeout(() => ftCercaTxt.focus(), 30); return; }
   const v = e.target.closest('[data-vai]'); if(v){ month = v.dataset.vai; ssSet('bar-mese', month); calLevel = 'm'; render(); return; }
   if(e.target.closest('[data-anno]')){ calLevel = 'y'; render(); }
 });
@@ -1886,8 +1936,10 @@ function renderSpese(){
   const top = `<div class="sp-top">
       <button class="btn add" id="spAdd" type="button">+ Nuova spesa</button>
       <button class="btn ghost" id="spTipBtn" type="button">Tipologie</button>
-    </div>`;
-  if(calLevel === 'a'){ $('v-spese').innerHTML = top + '<div id="rimSlot"></div>' + tabellaSpese(); mettiRim(); return; }
+      <button class="btn ghost" id="spCerca" type="button" aria-pressed="${cercaAperta}" aria-label="Cerca nelle spese">🔍 Cerca</button>
+    </div>
+    <div id="cercaSlot"></div>`;
+  if(calLevel === 'a'){ $('v-spese').innerHTML = top + '<div id="rimSlot"></div>' + tabellaSpese(); mettiRim(); mettiCerca(); return; }
   const P = periodo();
   const sm = speseMese(P);
   const list = [...sm.list].sort((a, b) => b.data.localeCompare(a.data) || (b.creata || '').localeCompare(a.creata || ''));
@@ -1921,7 +1973,46 @@ function renderSpese(){
       </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna spesa segnata in questo mese. Tocca "+ Nuova spesa".</p></div>'}
     </div>
     ${calLevel === 'm' ? '<p class="hint">Tocca una riga per correggerla o eliminarla. Tocca il mese in alto (o pizzica) per vedere l\'anno.</p>' : ''}`;
-  mettiRim();
+  mettiRim(); mettiCerca();
+}
+
+/* Ricerca su tutte le spese (anche le automatiche degli stipendi 2): nome, tipologia, giorno o importo.
+   Ogni parola scritta deve comparire. La casella non viene ridisegnata, così non perde il cursore. */
+let cercaAperta = false;
+const cercaBox = document.createElement('div');
+cercaBox.className = 'card cerca';
+cercaBox.innerHTML = '<div class="cerca-in"><input id="cercaTxt" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca: pane, sponsor, 43, 12/10…" aria-label="Cerca nelle spese"><button class="btn ghost" id="cercaChiudi" type="button">Chiudi</button></div><div class="cerca-ris" id="cercaRis"></div>';
+const cercaTxt = cercaBox.querySelector('#cercaTxt'), cercaRis = cercaBox.querySelector('#cercaRis');
+const piega = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function tutteLeSpese(){
+  const mesi = [...new Set(Object.values(ST).map(r => r.mese).filter(Boolean))];
+  const auto = mesi.flatMap(m => speseMese(m).list.filter(x => x.auto));
+  return [...SP, ...auto];
+}
+function disegnaCerca(){
+  const q = piega(cercaTxt.value).split(/\s+/).filter(Boolean);
+  if(!q.length){ cercaRis.innerHTML = '<p class="muted" style="margin:0;font-size:.85rem">Scrivi cosa cerchi: cerca in tutti i mesi.</p>'; return; }
+  const ris = tutteLeSpese().filter(x => {
+    const dt = parse(x.data);
+    const t = piega([x.nome, tipoNome(x.tipo), x.data, `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`, fMonth.format(dt), num(x.importo), String(x.importo)].join(' '));
+    return q.every(p => t.includes(p));
+  }).sort((a, b) => b.data.localeCompare(a.data));
+  const tot = ris.reduce((a, x) => a + (x.importo || 0), 0), max = 300;
+  cercaRis.innerHTML = ris.length ? `<div class="cerca-sum"><span>${ris.length} ${ris.length === 1 ? 'spesa trovata' : 'spese trovate'}${ris.length > max ? ` (mostro le ultime ${max})` : ''}</span><b class="num">${eur(tot)}</b></div>
+    <div class="sheetwrap"><table class="xl spese">
+      <colgroup><col class="c-day"><col class="c-tipo"><col><col class="c-imp"></colgroup>
+      <thead><tr><th>Giorno</th><th class="l">Tipologia</th><th class="l">Spesa</th><th>Importo</th></tr></thead>
+      <tbody>${ris.slice(0, max).map(x => { const dt = parse(x.data); return `<tr tabindex="0" ${x.auto ? `data-auto="${x.mese}"` : `data-sp="${x.id}"`}>
+        <td class="day"><b>${dt.getDate()}</b><small>${fMs.format(dt).replace('.', '')} ${String(dt.getFullYear()).slice(2)}</small></td>
+        <td class="l">${tipoTag(x.tipo)}</td><td class="nome">${esc(x.nome)}${x.auto ? '<small class="autob">automatica</small>' : ''}</td><td class="tot">${num(x.importo)}</td></tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>Totale</td><td></td><td></td><td>${num(tot)}</td></tr></tfoot>
+    </table></div>` : '<p class="muted" style="margin:0">Nessuna spesa trovata.</p>';
+}
+cercaTxt.addEventListener('input', disegnaCerca);
+cercaBox.querySelector('#cercaChiudi').addEventListener('click', () => { cercaAperta = false; cercaTxt.value = ''; render(); });
+function mettiCerca(){
+  const s = $('cercaSlot'); if(!s) return;
+  if(cercaAperta){ s.replaceWith(cercaBox); disegnaCerca(); } else s.remove();
 }
 
 let spEdit = null, spTipo = 'a';
@@ -2005,6 +2096,7 @@ $('tipForm').addEventListener('submit', async e => {
 $('v-spese').addEventListener('click', e => {
   if(e.target.closest('#spAdd')) return openSpesa(null);
   if(e.target.closest('#spTipBtn')) return openTipi();
+  if(e.target.closest('#spCerca')){ cercaAperta = !cercaAperta; if(!cercaAperta) cercaTxt.value = ''; render(); if(cercaAperta) setTimeout(() => cercaTxt.focus(), 30); return; }
   const r = e.target.closest('tr[data-sp]'); if(r) return openSpesa(r.dataset.sp);
   const au = e.target.closest('tr[data-auto]'); if(au){ month = au.dataset.auto; ssSet('bar-mese', month); calLevel = 'm'; rsOpen = false; setView('stipendi'); return; }
   const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
