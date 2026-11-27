@@ -457,6 +457,14 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
   </form>
 </dialog>
 
+<dialog id="dlgProm">
+  <form class="sheet" method="dialog" novalidate>
+    <h2 style="text-transform:none">Promemoria fatture</h2>
+    <p id="promTxt" style="margin:0 0 16px"></p>
+    <div class="actions"><button class="btn ghost" id="promNo" type="button">Non ora</button><button class="btn" id="promOk" type="button">OK, importa ora</button></div>
+  </form>
+</dialog>
+
 <dialog id="dlgFtEd">
   <form class="sheet" id="feForm" method="dialog" novalidate>
     <h2 id="feTitle" style="text-transform:none">Nuova fattura</h2>
@@ -679,10 +687,13 @@ function leggiCsvFatture(testo){
   const riga = line => { const out = []; let cur = '', q = false; for(let i = 0; i < line.length; i++){ const c = line[i]; if(q){ if(c === '"' && line[i + 1] === '"'){ cur += '"'; i++; } else if(c === '"') q = false; else cur += c; } else if(c === '"') q = true; else if(c === ';' || c === '\t') { out.push(cur.trim()); cur = ''; } else cur += c; } out.push(cur.trim()); return out; };
   const righe = testo.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim()).map(riga);
   if(righe.length < 2) throw new Error('il file è vuoto');
+  // Il cassetto fiscale scrive i testi tra apici singoli: 'TIM S.p.A.' → TIM S.p.A.
+  const pulito = s => String(s ?? '').trim().replace(/^'([\s\S]*)'$/, '$1').trim();
+  righe.forEach((r, i) => { righe[i] = r.map(pulito); });
   const H = righe[0].map(x => x.toLowerCase());
   // Cerca le chiavi in ordine: la prima è la più precisa (es. "denominazione" prima di "fornitore", che c'è anche in "identificativo fornitore").
   const col = (...k) => { for(const y of k){ const i = H.findIndex(x => x.includes(y)); if(i >= 0) return i; } return -1; };
-  const c = { tipo: col('tipo documento', 'tipo'), numero: col('numero'), data: col('data emissione', 'data'), piva: col('identificativo fornitore', 'partita iva', 'p.iva'),
+  const c = { tipo: col('tipo documento', 'tipo'), numero: col('numero'), data: col('data emissione', 'data'), piva: col('identificativo fornitore', 'partita iva fornitore', 'partita iva', 'p.iva'), cf: col('codice fiscale fornitore'),
     forn: col('denominazione', 'fornitore'), imp: col('imponibile', 'importo'), iva: col('imposta', 'iva'), sdi: col('sdi') };
   if(c.numero < 0 || c.data < 0 || c.imp < 0 || c.forn < 0) throw new Error('non sembra un elenco di fatture (mancano numero, data, fornitore o imponibile)');
   const n = s => { s = String(s || '').replace(/\s|€/g, ''); if(s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = Number(s); return Number.isFinite(v) ? v : 0; };
@@ -690,9 +701,13 @@ function leggiCsvFatture(testo){
     const [d, m, y] = String(r[c.data] || '').split(/[\/\-.]/);
     const data = y && y.length === 4 ? `${y}-${pad(+m)}-${pad(+d)}` : /^\d{4}-\d{2}-\d{2}$/.test(r[c.data]) ? r[c.data] : '';
     const tipo = c.tipo >= 0 ? r[c.tipo] : 'Fattura';
-    const segno = /credito/i.test(tipo) ? -1 : 1;
-    const imponibile = round2(segno * Math.abs(n(r[c.imp]))), iva = round2(segno * Math.abs(c.iva >= 0 ? n(r[c.iva]) : 0));
-    return { tipo, numero: r[c.numero], data, piva: c.piva >= 0 ? r[c.piva] : '', fornitore: r[c.forn], imponibile, iva, totale: round2(imponibile + iva), sdi: c.sdi >= 0 ? r[c.sdi] : '', fonte: 'csv' };
+    // Note di credito: nel file gli importi sono positivi, vanno sottratti. Le altre righe restano col segno del file.
+    const nota = /credito/i.test(tipo);
+    let imponibile = n(r[c.imp]), iva = c.iva >= 0 ? n(r[c.iva]) : 0;
+    if(nota){ imponibile = -Math.abs(imponibile); iva = -Math.abs(iva); }
+    imponibile = round2(imponibile); iva = round2(iva);
+    const pv = c.piva >= 0 ? r[c.piva] : '', piva = pv && !/non presente/i.test(pv) ? pv : (c.cf >= 0 && !/non presente/i.test(r[c.cf] || '') ? r[c.cf] : '');
+    return { tipo: nota ? 'Nota di credito' : String(tipo || 'Fattura').replace(/\s*\(TD\d+\)/, ''), numero: r[c.numero], data, piva, fornitore: String(r[c.forn] || '').replace(/\s+/g, ' ').trim(), imponibile, iva, totale: round2(imponibile + iva), sdi: c.sdi >= 0 ? r[c.sdi] : '', fonte: 'csv' };
   }).filter(f => f.data && f.numero && f.fornitore);
 }
 const chiaveFt = f => f.sdi ? 'sdi_' + f.sdi : ('f_' + (f.piva || f.fornitore) + '_' + f.numero).replace(/[^\w.-]/g, '_');
@@ -1035,7 +1050,9 @@ function renderRiepilogo(){
 /* ---------- fatture (Incasso1) ---------- */
 function renderFatture(){
   const top = `<div class="ft-top">
-      <button class="btn add" id="ftNew" type="button">+ Fattura a mano</button>
+      <label class="btn add" for="ftFile">Importa fatture</label>
+      <input type="file" id="ftFile" accept=".csv,text/csv,text/plain,.xml,text/xml,application/xml" multiple hidden>
+      <button class="btn ghost" id="ftNew" type="button">+ A mano</button>
     </div>`;
   const anni = calLevel === 'a';
   const blocco = (titolo, fm, s) => {
@@ -1074,7 +1091,7 @@ function renderFatture(){
         const ult = FT.map(f => f.data).filter(Boolean).sort().pop();
         return `<div class="card"><p class="muted" style="margin:0 0 ${FT.length ? 12 : 0}px">Nessuna fattura in questo mese.${FT.length ? ` Nel gestionale ci sono ${FT.length} fatture.` : ''}</p>${ult ? `<div class="st-actions" style="margin:0;flex-wrap:wrap"><button class="btn" type="button" data-vai="${ult.slice(0, 7)}">Vai a ${fMonth.format(parse(ult.slice(0, 7) + '-01'))}</button><button class="btn ghost" type="button" data-anno="1">Vedi tutto il ${month.slice(0, 4)}</button></div>` : ''}</div>`;
       })()}</div>
-      <p class="hint">Le fatture arriveranno da sole dal sistema di cassa; nel frattempo si aggiungono a mano. Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
+      <p class="hint">Importa il file CSV delle fatture ricevute scaricato dal cassetto fiscale (anche se contiene fatture già caricate: i doppioni vengono saltati). Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
     return;
   }
   const periodi = periodiTabella();
@@ -1204,6 +1221,7 @@ async function importaFatture(files){
   if(nuove.length) await backend.addFatture(nuove);
   const doppie = lette.length - nuove.length;
   if(lette.length) toast(nuove.length ? `${nuove.length === 1 ? 'Importata 1 fattura' : `Importate ${nuove.length} fatture`}${doppie ? `, ${doppie === 1 ? '1 era già presente' : `${doppie} erano già presenti`}` : ''}` : 'Tutte le fatture del file erano già presenti');
+  if(lette.length) segnaPromemoriaFatto();
   if(nuove.length){ const ult = nuove.map(f => f.data).sort().pop(); month = ult.slice(0, 7); ssSet('bar-mese', month); calLevel = daControllare.length ? 'm' : 'y'; render(); }
   if(daControllare.length){ feCoda = daControllare; apriModuloFattura(feCoda.shift(), true); }
 }
@@ -1853,8 +1871,36 @@ function gate(which, msg){
   if(which === 'denied') $('gate-email').textContent = msg || '';
   if(which === 'error' && msg) $('gate-error-msg').textContent = msg;
 }
+/* Promemoria mensile per importare le fatture del cassetto: solo per l'account indicato (impronta SHA-256
+   dell'email, così l'indirizzo non è scritto nel codice pubblico). "Non ora" lo rimanda alla prossima apertura dell'app. */
+const PROM_IMPRONTA = '10795a833d93f2434f28b702df65449f0065cf45c6342fddca15b42ad58d5d0a';
+let promStato = null;   // { fatto: 'AAAA-MM' } da bar_impostazioni/promemoria_fatture
+async function impronta(s){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s || '').trim().toLowerCase())); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+const meseCorrente = () => TODAY().slice(0, 7);
+// Ultimo mese "a posto": quello salvato, altrimenti il mese dell'ultimo import già fatto.
+const promFatto = () => promStato?.fatto || FT.map(f => String(f.importata || '').slice(0, 7)).filter(Boolean).sort().pop() || '';
+async function controllaPromemoria(){
+  if(!me || $('dlgProm').open || ssGet('bar-prom-rimandato') === meseCorrente()) return;
+  if(!DEMO && await impronta(me.email) !== PROM_IMPRONTA) return;
+  if(promFatto() >= meseCorrente()) return;
+  const prec = shiftMonth(meseCorrente(), -1);
+  $('promTxt').textContent = `È iniziato ${fMonth.format(parse(meseCorrente() + '-01'))}: scarica dal cassetto fiscale il file CSV delle fatture ricevute di ${fMonth.format(parse(prec + '-01'))} e importalo qui. Se contiene anche fatture già caricate, i doppioni vengono saltati.`;
+  $('dlgProm').showModal();
+}
+function segnaPromemoriaFatto(){
+  promStato = { fatto: meseCorrente() };
+  backend.setPromemoria?.({ fatto: meseCorrente(), quando: new Date().toISOString() }).catch(() => {});
+}
+$('promNo').onclick = () => { ssSet('bar-prom-rimandato', meseCorrente()); $('dlgProm').close(); };
+$('promOk').onclick = () => {
+  $('dlgProm').close();
+  calLevel = 'm'; rsOpen = false; setView('fatture');
+  setTimeout(() => $('ftFile')?.click(), 50);
+};
+
 function signedIn(u){
   me = u;
+  setTimeout(controllaPromemoria, 1500);
   $('acct').textContent = (u.nome || u.email || '?').charAt(0).toUpperCase();
   $('m-email').textContent = u.email;
   render();
@@ -1943,6 +1989,9 @@ function startDemo(){
       .map(f => ({ ...f, id: chiaveFt(f) }));
   }
   FT = ft;
+  try{ promStato = JSON.parse(lsGet('bar-prova-prom') || 'null'); }catch(e){}
+  // Nella prova il promemoria compare subito (finché non si importa o si preme Non ora).
+  if(!promStato) promStato = { fatto: shiftMonth(TODAY().slice(0, 7), -1) };
   const storeFt = () => { lsSet(KEY_FT, JSON.stringify(FT)); render(); };
   const storeSt = () => { lsSet(KEY_ST, JSON.stringify({ ST, PERS })); render(); };
   const storeSp = () => { lsSet(KEY_SP, JSON.stringify({ SP, TIPI })); render(); };
@@ -1956,13 +2005,14 @@ function startDemo(){
     setTipi: async t => { TIPI = t; storeSp(); },
     setSt: async (id, r) => { ST = { ...ST, [id]: r }; storeSt(); },
     addFatture: async list => { FT = [...FT, ...list]; storeFt(); },
+    setPromemoria: async p => { lsSet('bar-prova-prom', JSON.stringify(p)); },
     delFattura: async id => { FT = FT.filter(f => f.id !== id); storeFt(); },
     delSt: async id => { const c = { ...ST }; delete c[id]; ST = c; storeSt(); },
     addPers: async p => { PERS = [...PERS, { ...p, id: 'p' + Math.random().toString(36).slice(2, 8) }]; storeSt(); },
     updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
     delPers: async id => { PERS = PERS.filter(x => x.id !== id); storeSt(); },
     nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); }catch(e){} location.href = location.pathname; },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); }catch(e){} location.href = location.pathname; },
   };
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
@@ -2008,6 +2058,7 @@ async function startFirebase(){
         }
       },
       delFattura: id => run(S.deleteDoc(S.doc(ftCol, id))),
+      setPromemoria: p => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), { ...p, da: auth.currentUser.email })),
       setSt: (id, r) => run(S.setDoc(S.doc(stCol, id), { ...r, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
       delSt: id => run(S.deleteDoc(S.doc(stCol, id))),
       addPers: p => run(S.addDoc(persCol, p)),
@@ -2037,7 +2088,7 @@ async function startFirebase(){
     A.onAuthStateChanged(auth, user => {
       if(unsub){ unsub(); unsub = null; }
       unsubs.forEach(u => u()); unsubs = [];
-      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt','dlgFtEd']) if($(d).open) $(d).close();
+      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt','dlgFtEd','dlgProm']) if($(d).open) $(d).close();
       if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
@@ -2048,6 +2099,7 @@ async function startFirebase(){
           unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
           unsubs.push(S.onSnapshot(ftCol, s6 => { FT = s6.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
+          unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), s7 => { promStato = s7.exists() ? s7.data() : null; }, () => {}));
           unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
           let seedFatto = false;
           unsubs.push(S.onSnapshot(persCol, s5 => {
