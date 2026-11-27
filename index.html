@@ -267,7 +267,7 @@ main{touch-action:pan-x pan-y}
 /* fatture Incasso1 */
 .ft-top{display:flex;gap:8px;margin-bottom:12px}
 .ft-top .btn{height:40px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
-.ft-top .btn.add{flex:1}
+.ft-top .btn.add{flex:1;text-align:center}
 .xl.ft col.c-forn{width:auto}
 .xl.ft td.forn{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xl.ft td.forn small{display:block;color:var(--muted);font-size:.7rem}
@@ -453,6 +453,30 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
         <button class="btn ghost" id="spCancel" type="button">Annulla</button>
         <button class="btn" id="spSave" type="submit">Salva</button>
       </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgFtEd">
+  <form class="sheet" id="feForm" method="dialog" novalidate>
+    <h2 id="feTitle" style="text-transform:none">Nuova fattura</h2>
+    <p class="sub" id="feSub" style="margin:-8px 0 14px">A bilancio con Incasso1</p>
+    <div class="field"><label for="feForn">Fornitore</label><input class="txt" id="feForn" maxlength="120" autocomplete="off"></div>
+    <div class="field"><label for="fePiva">Partita IVA <span class="hint">· facoltativa</span></label><input class="txt" id="fePiva" maxlength="20" inputmode="numeric" autocomplete="off"></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+      <div class="field"><label for="feNum">Numero</label><input class="txt" id="feNum" maxlength="40" autocomplete="off"></div>
+      <div class="field"><label for="feData">Data emissione</label><input class="txt" id="feData" type="date"></div>
+    </div>
+    <div class="field"><label>Documento</label><div class="chips" id="feTipo"><button type="button" class="chip" data-v="Fattura" aria-pressed="true">Fattura</button><button type="button" class="chip" data-v="Nota di credito" aria-pressed="false">Nota di credito</button></div></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+      <div class="field"><label for="feImp">Imponibile</label><div class="money"><span>€</span><input id="feImp" inputmode="decimal" autocomplete="off" placeholder="0,00"></div></div>
+      <div class="field"><label for="feIva">IVA</label><div class="money"><span>€</span><input id="feIva" inputmode="decimal" autocomplete="off" placeholder="0,00"></div></div>
+    </div>
+    <div class="calc" id="feCalc"></div>
+    <p class="err" id="feErr" hidden></p>
+    <div class="actions">
+      <button class="btn danger" id="feSkip" type="button">Salta</button>
+      <div class="r"><button class="btn ghost" id="feCancel" type="button">Annulla</button><button class="btn" id="feSave" type="submit">Salva</button></div>
     </div>
   </form>
 </dialog>
@@ -1011,8 +1035,9 @@ function renderRiepilogo(){
 /* ---------- fatture (Incasso1) ---------- */
 function renderFatture(){
   const top = `<div class="ft-top">
-      <label class="btn add" for="ftFile">Importa fatture (CSV)</label>
-      <input type="file" id="ftFile" accept=".csv,text/csv,text/plain" multiple hidden>
+      <label class="btn add" for="ftFile">Importa PDF / CSV / XML</label>
+      <input type="file" id="ftFile" accept=".pdf,application/pdf,.csv,text/csv,text/plain,.xml,text/xml,application/xml" multiple hidden>
+      <button class="btn ghost" id="ftNew" type="button">+ A mano</button>
     </div>`;
   const anni = calLevel === 'a';
   const blocco = (titolo, fm, s) => {
@@ -1047,7 +1072,7 @@ function renderFatture(){
         <tbody>${rows}</tbody>
         <tfoot><tr><td>Totale</td><td></td><td>${num(fm.imp)}</td><td>${num(fm.iva)}</td><td>${num(fm.tot)}</td></tr></tfoot>
       </table></div></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna fattura in questo mese. Importa il CSV delle fatture ricevute.</p></div>'}</div>
-      <p class="hint">Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
+      <p class="hint">Importa l'elenco o le singole fatture in PDF (anche CSV o XML della fattura elettronica), oppure inseriscile a mano. Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
     return;
   }
   const periodi = periodiTabella();
@@ -1069,22 +1094,165 @@ function renderFatture(){
     <p class="hint">Fatture con IVA. Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per vederne le fatture; tocca il titolo in alto (o pizzica) per vedere gli anni'}.</p>`;
 }
 
+/* ---- lettura dei file: CSV (elenco), XML (fattura elettronica), PDF (elenco o fattura singola) ---- */
+const nIt = s => { s = String(s || '').replace(/\s|€/g, ''); if(s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = Number(s); return Number.isFinite(v) ? v : 0; };
+const dataIso = s => { const m = String(s || '').match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); return m ? `${m[3]}-${pad(+m[2])}-${pad(+m[1])}` : ''; };
+const conSegno = f => { const s = /credito/i.test(f.tipo) ? -1 : 1; const imp = round2(s * Math.abs(f.imponibile || 0)), iva = round2(s * Math.abs(f.iva || 0)); return { ...f, imponibile: imp, iva, totale: round2(imp + iva) }; };
+
+function leggiXmlFattura(testo){
+  const doc = new DOMParser().parseFromString(testo, 'application/xml');
+  const q = (root, ...nomi) => { let el = root; for(const n of nomi){ el = el && [...el.getElementsByTagName('*')].find(x => x.localName === n); } return el; };
+  const t = (root, ...nomi) => (q(root, ...nomi)?.textContent || '').trim();
+  const ced = q(doc, 'CedentePrestatore');
+  const dg = q(doc, 'DatiGeneraliDocumento');
+  if(!ced || !dg) throw new Error('il file XML non è una fattura elettronica');
+  const nome = t(ced, 'Denominazione') || [t(ced, 'Nome'), t(ced, 'Cognome')].filter(Boolean).join(' ');
+  let imp = 0, iva = 0;
+  [...doc.getElementsByTagName('*')].filter(x => x.localName === 'DatiRiepilogo').forEach(r => { imp += nIt(t(r, 'ImponibileImporto').replace('.', ',')); iva += nIt(t(r, 'Imposta').replace('.', ',')); });
+  if(!imp && !iva) imp = Number(t(dg, 'ImportoTotaleDocumento')) || 0;
+  const tipoDoc = t(dg, 'TipoDocumento');
+  return conSegno({ tipo: tipoDoc === 'TD04' ? 'Nota di credito' : 'Fattura', numero: t(dg, 'Numero'), data: t(dg, 'Data'), piva: t(ced, 'IdCodice'), fornitore: nome, imponibile: imp, iva, sdi: '', fonte: 'xml' });
+}
+
+// pdf.js caricato solo quando serve (da cdnjs, versione fissa).
+let pdfjs = null;
+async function caricaPdfJs(){
+  if(pdfjs) return pdfjs;
+  const V = '3.11.174', base = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/`;
+  await new Promise((ok, ko) => { const s = document.createElement('script'); s.src = base + 'pdf.min.js'; s.onload = ok; s.onerror = () => ko(new Error('non riesco a caricare il lettore PDF, controlla internet')); document.head.appendChild(s); });
+  pdfjs = window.pdfjsLib; pdfjs.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+  return pdfjs;
+}
+/* Righe di testo del PDF, ricostruite per posizione (stessa altezza = stessa riga). */
+async function righePdf(buf){
+  const lib = await caricaPdfJs();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const righe = [];
+  for(let p = 1; p <= pdf.numPages; p++){
+    const items = (await (await pdf.getPage(p)).getTextContent()).items.filter(i => i.str.trim());
+    const gruppi = [];
+    for(const it of items){
+      const y = it.transform[5], x = it.transform[4];
+      let g = gruppi.find(g => Math.abs(g.y - y) < 3);
+      if(!g) gruppi.push(g = { y, parti: [] });
+      g.parti.push({ x, s: it.str.trim() });
+    }
+    gruppi.sort((a, b) => b.y - a.y).forEach(g => righe.push(g.parti.sort((a, b) => a.x - b.x).map(p => p.s).join(' ').replace(/\s+/g, ' ')));
+  }
+  return righe;
+}
+const RE_IMP = /-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)/g;
+/* Elenco di fatture (es. stampa del cassetto fiscale): una riga = data + partita IVA + importi. */
+function elencoDaRighe(righe){
+  const out = [];
+  for(const r of righe){
+    const d = r.match(/\b\d{2}\/\d{2}\/\d{4}\b/), pi = r.match(/\b(?:IT)?(\d{11})\b/), imp = r.match(RE_IMP);
+    if(!d || !pi || !imp || imp.length < 2) continue;
+    const prima = r.slice(0, d.index).trim(), dopoPiva = r.slice(pi.index + pi[0].length), iImp = dopoPiva.search(RE_IMP);
+    const tipo = /nota/i.test(prima) ? 'Nota di credito' : 'Fattura';
+    const numero = prima.replace(/^(fattura|nota di credito|nota credito|autofattura)\s*/i, '').trim() || '?';
+    const fornitore = dopoPiva.slice(0, iImp).trim();
+    const sdi = (dopoPiva.slice(iImp).match(/\b\d{8,}\b/) || [''])[0];
+    out.push(conSegno({ tipo, numero, data: dataIso(d[0]), piva: pi[1], fornitore: fornitore || pi[1], imponibile: nIt(imp[0]), iva: nIt(imp[1]), sdi, fonte: 'pdf' }));
+  }
+  return out;
+}
+/* Fattura singola: prova a riconoscere i campi; poi li controlli tu nel modulo. */
+function fatturaDaRighe(righe){
+  const tutto = righe.join('\n');
+  const trova = re => { const m = tutto.match(re); return m ? m[1].trim() : ''; };
+  const ultimo = re => { let m, v = ''; const r = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); while((m = r.exec(tutto))) v = m[1]; return v; };
+  const piva = trova(/(?:p\.?\s?iva|partita\s+iva|c\.f\.\/p\.iva)[^\d\n]{0,15}(?:IT)?\s?(\d{11})/i) || trova(/\b(?:IT)?(\d{11})\b/);
+  const iPiva = righe.findIndex(r => piva && r.includes(piva));
+  const societa = righe.find(r => /\b(s\.?p\.?a|s\.?r\.?l|s\.?n\.?c|s\.?a\.?s|srls)\b\.?/i.test(r) && r.length < 90);
+  const fornitore = (societa || (iPiva > 0 ? righe[iPiva - 1] : righe[0]) || '').replace(/^(cedente|fornitore|mittente)[:\s]*/i, '').trim();
+  const numero = trova(/(?:fattura|documento|doc\.)\s*(?:n\.?|nr\.?|num(?:ero)?\.?)\s*[:°]?\s*([A-Z0-9][A-Z0-9\/\-._ ]{0,25}?)(?=\s+(?:del|data)\b|\s*$|\n)/im) || trova(/numero\s*(?:documento|fattura)?\s*[:]?\s*([A-Z0-9][A-Z0-9\/\-._]{0,25})/i);
+  const data = dataIso(trova(/(?:data(?:\s+(?:documento|emissione|fattura))?|del)\s*[:]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4})/i) || (tutto.match(/\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}/) || [''])[0]);
+  const imp = nIt(ultimo(/(?:totale\s+)?imponibile[^\d\n-]{0,25}(-?\d{1,3}(?:\.\d{3})*,\d{2})/i));
+  const iva = nIt(ultimo(/(?:totale\s+)?(?:iva|imposta)(?!\s*\d{1,2}\s*%?\s*$)[^\d\n-]{0,25}(-?\d{1,3}(?:\.\d{3})*,\d{2})/i));
+  const tot = nIt(ultimo(/totale\s*(?:documento|fattura|da\s+pagare|complessivo|€)?[^\d\n-]{0,20}(-?\d{1,3}(?:\.\d{3})*,\d{2})/i));
+  let i1 = imp, i2 = iva;
+  if(!i1 && tot) i1 = round2(tot - i2);
+  if(i1 && !i2 && tot > i1) i2 = round2(tot - i1);
+  return { tipo: /nota\s+di\s+credito/i.test(tutto) ? 'Nota di credito' : 'Fattura', numero, data, piva, fornitore, imponibile: i1, iva: i2, sdi: '', fonte: 'pdf' };
+}
+
+let feCoda = [];   // fatture da controllare nel modulo (PDF singoli)
 async function importaFatture(files){
   let lette = [];
+  const daControllare = [];
   for(const f of files){
-    const buf = await f.arrayBuffer();
-    let testo = new TextDecoder('utf-8').decode(buf);
-    if(testo.includes('\uFFFD')) testo = new TextDecoder('windows-1252').decode(buf);
-    lette = lette.concat(leggiCsvFatture(testo));
+    const nome = f.name.toLowerCase(), buf = await f.arrayBuffer();
+    if(nome.endsWith('.pdf') || f.type === 'application/pdf'){
+      const righe = await righePdf(buf);
+      if(!righe.length) throw new Error(`${f.name}: il PDF non contiene testo (è una scansione?). Inserisci la fattura con "+ A mano"`);
+      const elenco = elencoDaRighe(righe);
+      if(elenco.length >= 2 || (elenco.length === 1 && righe.length < 15)) lette = lette.concat(elenco);
+      else daControllare.push({ ...fatturaDaRighe(righe), _file: f.name });
+    } else {
+      let testo = new TextDecoder('utf-8').decode(buf);
+      if(testo.includes('\uFFFD')) testo = new TextDecoder('windows-1252').decode(buf);
+      if(nome.endsWith('.xml') || /^\s*<\?xml|<\w*:?FatturaElettronica/.test(testo)) lette.push(leggiXmlFattura(testo));
+      else lette = lette.concat(leggiCsvFatture(testo));
+    }
   }
   const esistenti = new Set(FT.map(f => f.id));
   const nuove = [], viste = new Set();
   for(const f of lette){ const id = chiaveFt(f); if(esistenti.has(id) || viste.has(id)) continue; viste.add(id); nuove.push({ ...f, id, importata: new Date().toISOString() }); }
   if(nuove.length) await backend.addFatture(nuove);
   const doppie = lette.length - nuove.length;
-  toast(nuove.length ? `${nuove.length === 1 ? 'Importata 1 fattura' : `Importate ${nuove.length} fatture`}${doppie ? `, ${doppie === 1 ? '1 era già presente' : `${doppie} erano già presenti`}` : ''}` : 'Tutte le fatture del file erano già presenti');
-  if(nuove.length){ const ult = nuove.map(f => f.data).sort().pop(); month = ult.slice(0, 7); ssSet('bar-mese', month); calLevel = 'y'; render(); }
+  if(lette.length) toast(nuove.length ? `${nuove.length === 1 ? 'Importata 1 fattura' : `Importate ${nuove.length} fatture`}${doppie ? `, ${doppie === 1 ? '1 era già presente' : `${doppie} erano già presenti`}` : ''}` : 'Tutte le fatture del file erano già presenti');
+  if(nuove.length){ const ult = nuove.map(f => f.data).sort().pop(); month = ult.slice(0, 7); ssSet('bar-mese', month); calLevel = daControllare.length ? 'm' : 'y'; render(); }
+  if(daControllare.length){ feCoda = daControllare; apriModuloFattura(feCoda.shift(), true); }
 }
+
+/* Modulo fattura: controllo di un PDF letto, oppure inserimento a mano. */
+let feTipoSel = 'Fattura';
+function apriModuloFattura(f, daPdf){
+  f = f || {};
+  feTipoSel = /credito/i.test(f.tipo || '') ? 'Nota di credito' : 'Fattura';
+  $('feTitle').textContent = daPdf ? 'Controlla la fattura' : 'Nuova fattura';
+  $('feSub').textContent = daPdf ? `Letta da ${f._file || 'PDF'}: correggi quello che non torna, poi Salva.${feCoda.length ? ` Ne restano ${feCoda.length}.` : ''}` : 'A bilancio con Incasso1';
+  $('feForn').value = f.fornitore || ''; $('fePiva').value = f.piva || ''; $('feNum').value = f.numero || '';
+  $('feData').value = f.data || ''; $('feData').max = TODAY();
+  $('feImp').value = f.imponibile ? toField(Math.abs(f.imponibile)) : ''; $('feIva').value = f.iva ? toField(Math.abs(f.iva)) : '';
+  $('feTipo').querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === feTipoSel));
+  $('feSkip').hidden = !daPdf; $('feErr').hidden = true; $('feSave').disabled = false;
+  $('dlgFtEd').dataset.fonte = daPdf ? 'pdf' : 'manuale';
+  updFeCalc();
+  if(!$('dlgFtEd').open) $('dlgFtEd').showModal();
+}
+function updFeCalc(){
+  const a = money($('feImp').value), b = money($('feIva').value);
+  const t = (Number.isFinite(a) ? a : 0) + (Number.isFinite(b) ? b : 0);
+  $('feCalc').innerHTML = `<span style="display:flex;flex-direction:column;gap:2px"><span>Totale ${feTipoSel === 'Nota di credito' ? '(da sottrarre)' : 'fattura'}</span><b class="num">${eur(t)}</b></span>`;
+}
+const prossimaFe = () => { if(feCoda.length) apriModuloFattura(feCoda.shift(), true); else $('dlgFtEd').close(); };
+$('feTipo').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if(!b) return; feTipoSel = b.dataset.v; $('feTipo').querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', x === b)); updFeCalc(); });
+['feImp', 'feIva'].forEach(id => $(id).addEventListener('input', updFeCalc));
+$('feCancel').onclick = () => { feCoda = []; $('dlgFtEd').close(); };
+$('feSkip').onclick = prossimaFe;
+$('dlgFtEd').addEventListener('click', e => { if(e.target === $('dlgFtEd')){ feCoda = []; $('dlgFtEd').close(); } });
+$('feForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = t => { $('feErr').textContent = t; $('feErr').hidden = false; };
+  const fornitore = $('feForn').value.trim(), numero = $('feNum').value.trim(), data = $('feData').value;
+  const imp = money($('feImp').value), iva = money($('feIva').value);
+  if(!fornitore) return err('Scrivi il nome del fornitore.');
+  if(!numero) return err('Scrivi il numero della fattura.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) return err('Scegli la data di emissione.');
+  if(imp == null || Number.isNaN(imp) || Number.isNaN(iva)) return err('Scrivi imponibile (e IVA) validi, per esempio 120,50.');
+  const f = conSegno({ tipo: feTipoSel, numero, data, piva: $('fePiva').value.replace(/\s/g, ''), fornitore, imponibile: imp, iva: iva || 0, sdi: '', fonte: $('dlgFtEd').dataset.fonte });
+  const id = chiaveFt(f);
+  if(FT.some(x => x.id === id)) return err('Questa fattura (stesso fornitore e numero) è già nel gestionale.');
+  $('feSave').disabled = true;
+  try{
+    await backend.addFatture([{ ...f, id, importata: new Date().toISOString() }]);
+    month = data.slice(0, 7); ssSet('bar-mese', month); calLevel = 'm'; render();
+    toast('Fattura salvata'); prossimaFe();
+  }catch(e2){ $('feSave').disabled = false; err('Salvataggio non riuscito: ' + (e2.message || 'riprova')); }
+});
+$('v-fatture').addEventListener('click', e => { if(e.target.closest('#ftNew')) apriModuloFattura(null, false); });
 $('v-fatture').addEventListener('change', async e => {
   if(e.target.id !== 'ftFile' || !e.target.files.length) return;
   try{ await importaFatture([...e.target.files]); }
@@ -1098,7 +1266,7 @@ function openFt(id){
   $('ftTitle').textContent = f.fornitore;
   const r = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
   $('ftDl').innerHTML = r('Documento', esc(f.tipo || 'Fattura') + ' n. ' + esc(f.numero)) + r('Data emissione', fLong.format(parse(f.data))) + (f.piva ? r('Partita IVA', esc(f.piva)) : '')
-    + r('Imponibile', eur(f.imponibile)) + r('IVA', eur(f.iva)) + r('Totale', `<span style="font-size:1.1rem">${eur(f.totale)}</span>`) + (f.sdi ? r('Identificativo SDI', esc(f.sdi)) : '') + r('Arrivata da', f.fonte === 'csv' ? 'file CSV' : esc(f.fonte || '–'));
+    + r('Imponibile', eur(f.imponibile)) + r('IVA', eur(f.iva)) + r('Totale', `<span style="font-size:1.1rem">${eur(f.totale)}</span>`) + (f.sdi ? r('Identificativo SDI', esc(f.sdi)) : '') + r('Arrivata da', ({ csv: 'file CSV', pdf: 'file PDF', xml: 'fattura elettronica XML', manuale: 'inserita a mano' })[f.fonte] || esc(f.fonte || '–'));
   $('dlgFt').showModal();
 }
 $('ftClose').onclick = () => $('dlgFt').close();
@@ -1863,7 +2031,7 @@ async function startFirebase(){
     A.onAuthStateChanged(auth, user => {
       if(unsub){ unsub(); unsub = null; }
       unsubs.forEach(u => u()); unsubs = [];
-      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt']) if($(d).open) $(d).close();
+      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt','dlgFtEd']) if($(d).open) $(d).close();
       if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
