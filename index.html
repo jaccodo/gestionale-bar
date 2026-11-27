@@ -1383,7 +1383,7 @@ function domande(){
   add(I, 'In quanti giorni abbiamo superato i 2.000 €?', c => { const dd = giorniInc(c).filter(d => tot(G[d]) > 2000); return `${dqB(dd.length)} giorni sopra i 2.000 € ${c.inP}.` + (dd.length && dd.length <= 15 ? dqElenco(dd.map(d => `${dqGiorno(d)} · ${eur(tot(G[d]))}`)) : ''); });
   add(I, 'In quanti giorni siamo rimasti sotto i 1.000 €?', c => { const dd = giorniInc(c).filter(d => tot(G[d]) < 1000); return `${dqB(dd.length)} giorni sotto i 1.000 € ${c.inP}.` + (dd.length && dd.length <= 15 ? dqElenco(dd.map(d => `${dqGiorno(d)} · ${eur(tot(G[d]))}`)) : ''); });
   add(I, 'Abbiamo incassato più o meno del periodo prima?', c => { const p = stats(c.prev); return `${c.inP} ${dqE(c.s.tot)}, ${c.prevNome} ${eur(p.tot)}: ${dqVar(c.s.tot, p.tot)}.`; });
-  add(I, 'Abbiamo incassato più o meno dell\'anno scorso?', c => { const p = stats(c.ly); return `${c.nome}: ${dqE(c.s.tot)}; ${c.lyNome}: ${eur(p.tot)}. ${dqVar(c.s.tot, p.tot)}.`; });
+  add(I, 'Abbiamo incassato più o meno dell\'anno scorso?', c => { const p = stats(c.ly); return `${cap(c.nome)}: ${dqE(c.s.tot)}; ${c.lyNome}: ${eur(p.tot)} · ${dqVar(c.s.tot, p.tot)}.`; });
   add(I, 'Qual è il mese migliore dell\'anno?', c => { const m = mesiCon(c, m => stats(m).tot).sort((a, b) => b.v - a.v); return m.length ? `Nel ${c.anno} il mese migliore è ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessun incasso nell\'anno.'; });
   add(I, 'Qual è il mese peggiore dell\'anno?', c => { const m = mesiCon(c, m => stats(m).tot).sort((a, b) => a.v - b.v); return m.length ? `Nel ${c.anno} il mese più basso è ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessun incasso nell\'anno.'; });
   add(I, 'Quanto incassiamo in media al mese?', c => { const m = mesiCon(c, m => stats(m).tot); return m.length ? `Nel ${c.anno} la media è ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese (${m.length} mesi).` : 'Nessun incasso nell\'anno.'; });
@@ -1409,7 +1409,7 @@ function domande(){
   add(S, 'Quanto pesano le spese su Incasso2?', c => `Le spese sono il ${dqB(pct(c.sm.totale, c.s.i2))} di Incasso2 (${eur(c.sm.totale)} su ${eur(c.s.i2)}).`, true);
   add(S, 'Quanto resta di Incasso2 tolte le spese?', c => `Incasso2 − spese ${c.inP}: ${dqE(c.s.i2 - c.sm.totale)}.`, true);
   add(S, 'Abbiamo speso più o meno del periodo prima?', c => { const p = speseMese(c.prev).totale; return `${c.inP} ${dqE(c.sm.totale)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.sm.totale, p)}.`; }, true);
-  add(S, 'Abbiamo speso più o meno dell\'anno scorso?', c => { const p = speseMese(c.ly).totale; return `${c.nome}: ${dqE(c.sm.totale)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.sm.totale, p)}.`; }, true);
+  add(S, 'Abbiamo speso più o meno dell\'anno scorso?', c => { const p = speseMese(c.ly).totale; return `${cap(c.nome)}: ${dqE(c.sm.totale)}; ${c.lyNome}: ${eur(p)} · ${dqVar(c.sm.totale, p)}.`; }, true);
   add(S, 'In quale mese abbiamo speso di più?', c => { const m = mesiCon(c, m => speseMese(m).totale).sort((a, b) => b.v - a.v); return m.length ? `Nel ${c.anno}: ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessuna spesa.'; }, true);
   add(S, 'Cosa compriamo più spesso?', c => { const k = {}; c.sm.list.filter(x => !x.auto).forEach(x => { const n = (x.nome || '').trim().toLowerCase(); const y = k[n] ||= { n: 0, t: 0 }; y.n++; y.t += x.importo; }); const r = Object.entries(k).sort((a, b) => b[1].n - a[1].n).slice(0, 10); return r.length ? dqElenco(r.map(([n, y]) => `${esc(n)}: ${y.n} volte, ${eur(y.t)}`)) : 'Nessuna spesa.'; }, true);
   add(S, 'Quanto spendiamo di pane?', c => { const x = c.sm.list.filter(x => /pane/i.test(x.nome || '')); const t = x.reduce((a, y) => a + y.importo, 0); return `Pane ${c.inP}: ${dqE(t)} in ${x.length} spese` + (x.length ? `, ${eur(t / x.length)} di media a volta.` : '.'); }, true);
@@ -1431,7 +1431,7 @@ function domande(){
   add(F, 'Quanto resta di Incasso1 tolte le fatture?', c => `Incasso1 − fatture ${c.inP}: ${dqE(c.s.i1 - c.fm.tot)}.`);
   add(F, 'Quanto pesa l\'affitto sugli incassi?', c => { const a = c.fm.perC.Affitto?.tot || 0; return `Affitto ${c.inP}: ${dqE(a)}, cioè il ${pct(a, c.s.tot)} degli incassi.`; });
   add(F, 'Abbiamo speso in fatture più o meno del periodo prima?', c => { const p = fattureMese(c.prev).tot; return `${c.inP} ${dqE(c.fm.tot)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.fm.tot, p)}.`; });
-  add(F, 'Abbiamo speso in fatture più o meno dell\'anno scorso?', c => { const p = fattureMese(c.ly).tot; return `${c.nome}: ${dqE(c.fm.tot)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.fm.tot, p)}.`; });
+  add(F, 'Abbiamo speso in fatture più o meno dell\'anno scorso?', c => { const p = fattureMese(c.ly).tot; return `${cap(c.nome)}: ${dqE(c.fm.tot)}; ${c.lyNome}: ${eur(p)} · ${dqVar(c.fm.tot, p)}.`; });
   add(F, 'Quante note di credito abbiamo ricevuto?', c => { const x = c.fm.list.filter(f => /credito/i.test(f.tipo)); return `${dqB(x.length)} note di credito ${c.inP}, ${dqE(x.reduce((a, f) => a + f.totale, 0))}.`; });
   add(F, 'Quanto spendiamo di merce in media al mese?', c => { const m = mesiCon(c, m => fattureMese(m).perC.Merci?.tot || 0); return m.length ? `Nel ${c.anno} ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese di merci.` : 'Nessuna fattura di merci.'; });
   add(F, 'Quanto spendiamo di luce in media al mese?', c => { const m = mesiCon(c, m => fattureMese(m).perC['Energia elettrica']?.tot || 0); return m.length ? `Nel ${c.anno} ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese di energia elettrica.` : 'Nessuna fattura di luce.'; });
@@ -1448,7 +1448,7 @@ function domande(){
   add(P, 'Chi è il dipendente che costa di più?', c => { const r = Object.entries(c.st.perP).map(([id, p]) => ({ id, t: (p.s1 || 0) + (p.s2 || 0) })).sort((a, b) => b.t - a.t); return r.length ? `${dqB(esc(nomeP(r[0].id)))}: ${dqE(r[0].t)} ${stNome(c)}.` + dqElenco(r.map(x => `${esc(nomeP(x.id))}: ${eur(x.t)}`)) : 'Nessuna busta paga.'; });
   add(P, 'Quanto prende in media un dipendente al mese?', c => { const r = Object.values(c.st.perP); const t = r.reduce((a, p) => a + (p.s1 || 0) + (p.s2 || 0), 0), m = r.reduce((a, p) => a + p.mesi, 0); return m ? `${dqE(t / m)} al mese a testa (stipendi, senza F24).` : 'Nessuna busta paga.'; });
   add(P, 'Quanto pesa il personale sugli incassi?', c => `Il personale è il ${dqB(pct(c.b.pe.tot, c.s.tot))} degli incassi ${c.inP}.`);
-  add(P, 'Il personale costa più o meno dell\'anno scorso?', c => { const p = bil(c.ly).pe.tot; return `${c.nome}: ${dqE(c.b.pe.tot)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.b.pe.tot, p)}.`; });
+  add(P, 'Il personale costa più o meno dell\'anno scorso?', c => { const p = bil(c.ly).pe.tot; return `${cap(c.nome)}: ${dqE(c.b.pe.tot)}; ${c.lyNome}: ${eur(p)} · ${dqVar(c.b.pe.tot, p)}.`; });
   for(const p of PERS) add(P, `Quanto ha preso ${p.nome}?`, c => { const x = c.st.perP[p.id]; return x ? `${esc(p.nome)} ${stNome(c)}: ${dqE((x.s1 || 0) + (x.s2 || 0))}` + (LIM ? '.' : ` (stipendio 1 ${eur(x.s1)}, stipendio 2 ${eur(x.s2)}), ${x.mesi} ${x.mesi === 1 ? 'mese' : 'mesi'}.`) : `Nessuna busta paga per ${esc(p.nome)} ${stNome(c)}.`; });
 
   /* ---- Bilancio ---- */
@@ -1467,9 +1467,46 @@ function domande(){
   add(U, 'Quanto sono i costi commerciali?', c => `Costi commerciali ${c.inP}: ${dqE(c.b.cc.tot)}` + (LIM ? ` (fatture ${eur(c.b.cc.ft)}).` : ` (spese ${eur(c.b.cc.sp)}, fatture ${eur(c.b.cc.ft)}).`));
   add(U, 'Quanto sono tutti i costi?', c => `Tutti i costi ${c.inP}: ${dqE(c.b.costiLordi)} (commerciali ${eur(c.b.cc.tot)}, personale ${eur(c.b.pe.tot)}); di cui fissi ${eur(c.b.fissi)}.`);
   add(U, 'L\'utile è migliorato rispetto al periodo prima?', c => { const p = bil(c.prev).utile; return `${c.inP} ${dqE(c.b.utile)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.b.utile, p)}.`; });
-  add(U, 'L\'utile è migliorato rispetto all\'anno scorso?', c => { const p = bil(c.ly).utile; return `${c.nome}: ${dqE(c.b.utile)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.b.utile, p)}.`; });
+  add(U, 'L\'utile è migliorato rispetto all\'anno scorso?', c => { const p = bil(c.ly).utile; return `${cap(c.nome)}: ${dqE(c.b.utile)}; ${c.lyNome}: ${eur(p)} · ${dqVar(c.b.utile, p)}.`; });
   add(U, 'Quanto guadagniamo per giorno aperto?', c => c.s.incDays ? `${dqE(c.b.utile / c.s.incDays)} di utile per ogni giorno con incassi (${c.s.incDays} giorni).` : 'Nessun incasso nel periodo.');
   add(U, 'Qual è il mese con più utile nell\'anno?', c => { const m = mesiCon(c, m => bil(m).utile).sort((a, b) => b.v - a.v); return m.length ? `${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` + dqElenco(mesiCon(c, m => bil(m).utile).map(x => `${cap(fMonth.format(parse(x.m + '-01')))}: ${eur(x.v)}`)) : 'Nessun dato.'; });
+
+  /* ---- Confronti tra anni ---- */
+  const Y = 'Confronti tra anni';
+  // Anni con dati (incassi, spese, fatture, buste paga), dal più vecchio.
+  const anni = () => [...new Set([...Object.keys(G).filter(d => hasData(G[d])), ...SP.map(s => s.data), ...FT.map(f => f.data), ...Object.values(ST).map(r => r.mese)]
+    .filter(Boolean).map(d => d.slice(0, 4)))].sort();
+  const poco = 'Per confrontare servono i dati di almeno due anni: per ora nell\'app c\'è solo il ';
+  // Elenco anno per anno con la variazione sull'anno prima; segna il migliore.
+  const annoPerAnno = (f, etichetta = '') => { const v = anni().map(y => ({ y, v: f(y) })).filter(x => x.v); if(v.length < 2) return poco + (v[0] ? v[0].y : 'nessun anno') + '.'; const best = v.reduce((m, x) => x.v > m.v ? x : m, v[0]);
+    return dqElenco(v.map((x, i) => `<b>${x.y}</b>: ${eur(x.v)}${etichetta}${i ? ` · ${dqVar(x.v, v[i - 1].v)}` : ''}${x === best ? ' ★' : ''}`)); };
+  const stessoMese = (c, f) => { const m = month.slice(5), a = anni(); const v = a.map(y => ({ y, v: f(`${y}-${m}`) })).filter(x => x.v); if(v.length < 2) return `Per ${fMonth.format(parse(month + '-01')).split(' ')[0]} ci sono dati solo ${v.length ? 'del ' + v[0].y : 'di nessun anno'}: servono almeno due anni.`;
+    return dqElenco(v.map((x, i) => `<b>${cap(fMonth.format(parse(`${x.y}-${m}-01`)))}</b>: ${eur(x.v)}${i ? ` · ${dqVar(x.v, v[i - 1].v)}` : ''}`)); };
+  add(Y, 'Qual è l\'anno migliore di sempre?', () => { const v = anni().map(y => ({ y, v: stats(y).tot })).filter(x => x.v).sort((x, z) => z.v - x.v); if(!v.length) return 'Nessun dato.'; return `Per incassi il migliore è il ${dqB(v[0].y)} con ${dqE(v[0].v)}.` + (v.length < 2 ? ' (Per ora c\'è un solo anno di dati.)' : ''); });
+  add(Y, 'Qual è l\'anno peggiore?', () => { const v = anni().map(y => ({ y, v: stats(y).tot })).filter(x => x.v).sort((x, z) => x.v - z.v); if(v.length < 2) return poco + (v[0] ? v[0].y : 'nessun anno') + '.'; return v.length ? `Per incassi il più basso è il ${dqB(v[0].y)} con ${dqE(v[0].v)}.` : 'Nessun dato.'; });
+  add(Y, 'Come sono andati gli incassi anno per anno?', () => annoPerAnno(y => stats(y).tot));
+  add(Y, 'Come è andato Incasso1 anno per anno?', () => annoPerAnno(y => stats(y).i1));
+  add(Y, 'Come è andato Incasso2 anno per anno?', () => annoPerAnno(y => stats(y).i2), true);
+  add(Y, 'Come è andata la media al giorno anno per anno?', () => annoPerAnno(y => stats(y).media, ' al giorno'));
+  add(Y, 'Quanti giorni abbiamo lavorato anno per anno?', () => { const a = anni().filter(y => stats(y).incDays); return a.length ? dqElenco(a.map(y => `<b>${y}</b>: ${stats(y).incDays} giorni con incassi`)) : 'Nessun dato.'; });
+  add(Y, 'Come sono andate le spese anno per anno?', () => annoPerAnno(y => speseMese(y).totale), true);
+  add(Y, 'Come sono andate le fatture anno per anno?', () => annoPerAnno(y => fattureMese(y).tot));
+  add(Y, 'Come è andato il costo del personale anno per anno?', () => annoPerAnno(y => bil(y).pe.tot) + '<p class="sub" style="margin:6px 0 0">Anno contabile: da dicembre dell\'anno prima a novembre.</p>');
+  add(Y, 'Come è andato l\'utile anno per anno?', () => annoPerAnno(y => bil(y).utile));
+  add(Y, 'Come è andato il margine anno per anno?', () => { const a = anni().filter(y => stats(y).tot); if(a.length < 2) return poco + (a[0] || 'nessun anno') + '.'; return dqElenco(a.map(y => { const b = bil(y); return `<b>${y}</b>: ${pct(b.utile, b.i1n + b.i2)} di utile sui ricavi`; })); });
+  add(Y, 'Come è andato il costo al giorno anno per anno?', () => annoPerAnno(y => { const b = bil(y); return b.giorni.n ? b.costiLordi / b.giorni.n : 0; }, ' al giorno'));
+  add(Y, 'Questo mese rispetto allo stesso mese degli anni prima (incassi)?', c => stessoMese(c, m => stats(m).tot));
+  add(Y, 'Questo mese rispetto allo stesso mese degli anni prima (spese)?', c => stessoMese(c, m => speseMese(m).totale), true);
+  add(Y, 'Questo mese rispetto allo stesso mese degli anni prima (fatture)?', c => stessoMese(c, m => fattureMese(m).tot));
+  add(Y, 'Questo mese rispetto allo stesso mese degli anni prima (utile)?', c => stessoMese(c, m => bil(m).utile));
+  add(Y, 'Da inizio anno a oggi: meglio o peggio dell\'anno scorso?', () => { const oggi = TODAY(), y = +oggi.slice(0, 4), mmdd = oggi.slice(5);
+    const somma = a => Object.entries(G).filter(([d]) => d.startsWith(a + '-') && d.slice(5) <= mmdd).reduce((s, [, g]) => s + tot(g), 0);
+    const ora = somma(y), prima = somma(y - 1); return `Dal 1 gennaio a oggi: ${y} ${dqE(ora)}, stesso periodo del ${y - 1} ${eur(prima)} · ${dqVar(ora, prima)}.`; });
+  add(Y, 'Qual è il giorno migliore di sempre?', () => { const d = Object.keys(G).filter(d => hasInc(G[d])).sort((a, b) => tot(G[b]) - tot(G[a]))[0]; return d ? `${dqB(dqGiorno(d) + ' ' + d.slice(0, 4))} con ${dqE(tot(G[d]))}.` : 'Nessun incasso.'; });
+  add(Y, 'Qual è il mese migliore di sempre?', () => { const m = {}; Object.entries(G).forEach(([d, g]) => { if(hasInc(g)) m[d.slice(0, 7)] = (m[d.slice(0, 7)] || 0) + tot(g); }); const r = Object.entries(m).sort((a, b) => b[1] - a[1]); return r.length ? `${dqB(cap(fMonth.format(parse(r[0][0] + '-01'))))} con ${dqE(r[0][1])}.` + dqElenco(r.slice(0, 5).map(([k, v]) => `${cap(fMonth.format(parse(k + '-01')))}: ${eur(v)}`)) : 'Nessun incasso.'; });
+  for(const t of TIPI_ID) add(Y, `${tipoNome(t)}: abbiamo speso più o meno dell'anno scorso?`, c => { const a = speseMese(c.P).perTipo[t] || 0, b = speseMese(c.ly).perTipo[t] || 0; return `${tipoNome(t)} ${c.nome}: ${dqE(a)}; ${c.lyNome}: ${eur(b)} · ${dqVar(a, b)}.`; }, true);
+  for(const k of CAT_FT) add(Y, `${k}: abbiamo speso più o meno dell'anno scorso?`, c => { const a = fattureMese(c.P).perC[k]?.tot || 0, b = fattureMese(c.ly).perC[k]?.tot || 0; return `${k} ${c.nome}: ${dqE(a)}; ${c.lyNome}: ${eur(b)} · ${dqVar(a, b)}.`; });
+  for(const p of PERS) add(Y, `${p.nome}: ha preso più o meno dell'anno scorso?`, c => { const a = c.st.perP[p.id], b = stStats(c.mesiSt(c.ly)).perP[p.id]; const va = a ? (a.s1 || 0) + (a.s2 || 0) : 0, vb = b ? (b.s1 || 0) + (b.s2 || 0) : 0; return `${esc(p.nome)}: ${c.nome} ${dqE(va)}; ${c.lyNome} ${eur(vb)} · ${dqVar(va, vb)}.`; });
 
   return LIM ? L.filter(x => !x.a2) : L;
 }
