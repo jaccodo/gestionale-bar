@@ -25,6 +25,7 @@
   --t0:#2f7d5b; --t1:#c0562f; --t2:#3b6fb6; --t3:#a8437f; --t4:#8a7a18; --t5:#6a52b8; --t6:#1f8a99; --t7:#8a5a2b;
   --hol:#c62828; --hol-soft:#fde7e7;
   --good:#188046; --bad:#c62828; --warn:#8a5a00; --warn-soft:#fdf0d3;
+  --u-bg:#1c2230; --u-fg:#f3f5f9; --u-muted:#a9b2c3; --u-line:rgba(255,255,255,.14); --u-soft:rgba(255,255,255,.07); --u-good:#5fd896; --u-bad:#ff8f8f;
   --f-display:"Fraunces", Georgia, "Times New Roman", serif;
   --f-body:"Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
@@ -35,7 +36,8 @@
   --i1:#79a4e6; --i1-soft:#1a2639; --i2:#ec8a62; --i2-soft:#3a2219;
   --am:#f0c15f; --am-soft:#382a10; --pm:#a591ea; --pm-soft:#272240;
   --hol:#f07070; --hol-soft:#3a1818;
-  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark}}
+  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark;
+  --u-bg:#eef1f6; --u-fg:#11151c; --u-muted:#4f5868; --u-line:rgba(0,0,0,.12); --u-soft:rgba(0,0,0,.05); --u-good:#11733d; --u-bad:#b3261e}}
 :root[data-theme="dark"]{
   --bg:#0f1115; --surface:#181b22; --fg:#e9ecf2; --muted:#9aa1ae; --line:#2a2f3a; --soft:#20242d;
   --band:#161a22; --band-fg:#eef1f6; --band-muted:#8e97a8;
@@ -43,7 +45,8 @@
   --i1:#79a4e6; --i1-soft:#1a2639; --i2:#ec8a62; --i2-soft:#3a2219;
   --am:#f0c15f; --am-soft:#382a10; --pm:#a591ea; --pm-soft:#272240;
   --hol:#f07070; --hol-soft:#3a1818;
-  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark}
+  --good:#43b97a; --bad:#f07070; --warn:#f0c15f; --warn-soft:#382a10; color-scheme:dark;
+  --u-bg:#eef1f6; --u-fg:#11151c; --u-muted:#4f5868; --u-line:rgba(0,0,0,.12); --u-soft:rgba(0,0,0,.05); --u-good:#11733d; --u-bad:#b3261e}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
@@ -189,6 +192,17 @@ main{touch-action:pan-x pan-y}
 .xl.bt tbody tr{cursor:default}
 .xl.bt tbody tr:hover td{background:none}
 .xl.bt tr.pct td{font-size:.76rem;color:var(--muted);font-weight:600}
+/* Utile: riquadro a contrasto (scuro nel tema chiaro, chiaro nel tema scuro). */
+.card.ucard{background:var(--u-bg);color:var(--u-fg);border-color:var(--u-bg);box-shadow:0 10px 24px -14px rgba(0,0,0,.6)}
+.ucard h3{color:var(--u-fg);font-size:.9rem}
+.ucard .xl th,.ucard .xl td{border-color:var(--u-line)}
+.ucard .xl thead th{background:var(--u-soft);color:var(--u-muted)}
+.ucard .xl tfoot td{background:var(--u-soft);font-size:1.02rem}
+.ucard .xl td.u{font-weight:800;font-size:1rem}
+@media (max-width:420px){.ucard .xl.bt{font-size:.72rem}.ucard .xl.bt th,.ucard .xl.bt td{padding-inline:3px}.ucard .xl.bt td:first-child,.ucard .xl.bt th:first-child{padding-left:8px}.ucard .xl.bt td:last-child,.ucard .xl.bt th:last-child{padding-right:8px}.ucard .xl td.u{font-size:.82rem}.ucard .xl tfoot td{font-size:.78rem}}
+.ucard .xl small.pc,.ucard .sub,.ucard .iva-btn{color:var(--u-muted)}
+.ucard .u.pos{color:var(--u-good)} .ucard .u.neg{color:var(--u-bad)}
+.iva-btn{background:none;border:0;padding:0;font:inherit;text-decoration:underline;cursor:pointer}
 @media (max-width:420px){.xl.bt{font-size:.76rem}.xl.bt th,.xl.bt td{padding:7px 4px}.xl.bt th:first-child,.xl.bt td:first-child{padding-left:12px}.xl.bt th:last-child,.xl.bt td:last-child{padding-right:12px}.xl.bt col.c-v{width:30%}.xl.bt td .dot{display:none}}
 .muted{color:var(--muted)}
 
@@ -1049,7 +1063,7 @@ function bil(P){
   let i1 = 0, i2 = 0, giorniInc = 0;
   for(const [d, g] of Object.entries(G)) if(dentro(d) && g){ i1 += g.incasso1 || 0; i2 += g.incasso2 || 0; if(g.incasso1 != null || g.incasso2 != null) giorniInc++; }
   const voci = VOCI_CC.map(v => ({ nome: v.nome, sp: 0, ft: 0 }));
-  let altri = 0;   // spese segnate a mano con la tipologia Stipendio: vanno nel personale (Incasso2)
+  let altri = 0, ftImp = 0;   // spese segnate a mano con la tipologia Stipendio: vanno nel personale (Incasso2)
   for(const s of SP){
     if(!dentro(s.data)) continue;
     if(s.tipo === TIPO_STIP){ altri += s.importo || 0; continue; }
@@ -1058,6 +1072,7 @@ function bil(P){
   for(const f of FT){
     if(!dentro(f.data)) continue;
     const c = catOf(f), i = VOCI_CC.findIndex(v => v.ft.includes(c)); voci[i >= 0 ? i : VOCE_ALTRO].ft += f.totale || 0;
+    ftImp += f.imponibile || 0;
   }
   voci.forEach(v => v.tot = v.sp + v.ft);
   const cc = { sp: voci.reduce((x, v) => x + v.sp, 0), ft: voci.reduce((x, v) => x + v.ft, 0) }; cc.tot = cc.sp + cc.ft;
@@ -1072,19 +1087,31 @@ function bil(P){
   }
   pe.dTot = pe.d1 + pe.d2 + pe.f24; pe.sTot = pe.s1 + pe.s2; pe.tot = pe.dTot + pe.sTot + pe.altri;
   // Utile: attività 1 = Incasso1 − fatture − stipendi 1 − F24; attività 2 = Incasso2 − spese − stipendi 2.
-  const c1 = cc.ft + pe.d1 + pe.s1 + pe.f24, c2 = cc.sp + pe.d2 + pe.s2 + pe.altri;
-  return { i1, i2, tot: i1 + i2, giorniInc, voci, cc, pe, c1, c2, u1: i1 - c1, u2: i2 - c2, costi: c1 + c2, utile: i1 + i2 - c1 - c2, giorni: giorniDi(P) };
+  // Attività 1 al netto dell'IVA: incassi scorporati dell'aliquota, fatture all'imponibile (IVA a credito).
+  const i1n = i1 / (1 + IVA_INC / 100);
+  const c1 = ftImp + pe.d1 + pe.s1 + pe.f24, c2 = cc.sp + pe.d2 + pe.s2 + pe.altri;
+  return { i1, i2, tot: i1 + i2, i1n, ivaInc: i1 - i1n, ftImp, ivaFt: cc.ft - ftImp, giorniInc, voci, cc, pe, c1, c2, u1: i1n - c1, u2: i2 - c2,
+    costi: c1 + c2, utile: i1n + i2 - c1 - c2, costiLordi: cc.tot + pe.tot, giorni: giorniDi(P) };
 }
 
 // Vista del riepilogo: anno, mese o media al giorno dell'anno. Senza scelta segue lo zoom.
+// Aliquota IVA media sugli incassi di Incasso1, per l'utile netto (bar_impostazioni/iva). Di base 10% (somministrazione).
+let IVA_INC = 10;
+async function cambiaIva(){
+  const v = prompt('IVA media sugli incassi di Incasso1, in % (di solito 10 per il bar):', String(IVA_INC).replace('.', ','));
+  if(v == null) return;
+  const n = Number(String(v).replace('%', '').replace(',', '.').trim());
+  if(!Number.isFinite(n) || n < 0 || n > 30) return toast('Scrivi un numero tra 0 e 30');
+  try{ await backend.setIva(n); IVA_INC = n; render(); toast('IVA sugli incassi: ' + fPct.format(n) + '%'); }catch(e){ toast('Non riuscito: ' + (e.message || 'riprova')); }
+}
 let rpVista = ['y', 'm', 'g'].includes(ssGet('bar-rp')) ? ssGet('bar-rp') : '';
 const fGg = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
 function renderRiepilogo(){
   const all = bil('*'), gAll = all.giorni;
   const costoGiorno = `<div class="card">
       <h3>Quanto costa il bar al giorno</h3>
-      ${gAll.n ? `<div class="big num">${eur(all.costi / gAll.n)}</div>
-      <div class="sub">Tutti i costi a bilancio (${eur(all.costi)}) ÷ ${gAll.n} giorni di dati in memoria, dal ${fGg.format(parse(gAll.a))} al ${fGg.format(parse(gAll.b))}</div>
+      ${gAll.n ? `<div class="big num">${eur(all.costiLordi / gAll.n)}</div>
+      <div class="sub">Tutti i costi a bilancio (${eur(all.costiLordi)}) ÷ ${gAll.n} giorni di dati in memoria, dal ${fGg.format(parse(gAll.a))} al ${fGg.format(parse(gAll.b))}</div>
       <div class="kpis">
         <div><div class="l">Costi commerciali</div><div class="v num">${eur(all.cc.tot / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno</div></div>
         <div><div class="l">Costi personale</div><div class="v num">${eur(all.pe.tot / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno</div></div>
@@ -1151,17 +1178,17 @@ function renderRiepilogo(){
       
     </div>
 
-    <div class="card bcard">
+    <div class="card bcard ucard">
       <h3>Utile · ${cosa}</h3>
       <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
         <thead><tr><th></th><th>Ricavi</th><th>Costi</th><th>Utile</th></tr></thead>
         <tbody>
-          <tr><td><span class="dot" style="background:var(--i1)"></span>Attività 1</td><td>${v(b.i1)}</td><td>${v(b.c1)}</td><td class="tot" ${segno(b.u1)}>${v(b.u1)}<small class="pc">${b.i1 ? pct(b.u1, b.i1) : ''}</small></td></tr>
-          <tr><td><span class="p2">Attività 2</span></td><td>${v(b.i2)}</td><td>${v(b.c2)}</td><td class="tot" ${segno(b.u2)}>${v(b.u2)}<small class="pc">${b.i2 ? pct(b.u2, b.i2) : ''}</small></td></tr>
+          <tr><td><span class="dot" style="background:var(--i1)"></span>Attività 1</td><td>${v(b.i1n)}<small class="pc">senza IVA</small></td><td>${v(b.c1)}<small class="pc">senza IVA</small></td><td class="u ${b.u1 < 0 ? 'neg' : 'pos'}">${v(b.u1)}<small class="pc">${b.i1n ? pct(b.u1, b.i1n) : ''}</small></td></tr>
+          <tr><td><span class="p2">Attività 2</span></td><td>${v(b.i2)}</td><td>${v(b.c2)}</td><td class="u ${b.u2 < 0 ? 'neg' : 'pos'}">${v(b.u2)}<small class="pc">${b.i2 ? pct(b.u2, b.i2) : ''}</small></td></tr>
         </tbody>
-        <tfoot><tr><td>Totale</td><td>${v(b.tot)}</td><td>${v(b.costi)}</td><td ${segno(b.utile)}>${v(b.utile)}</td></tr></tfoot>
+        <tfoot><tr><td>Totale</td><td>${v(b.i1n + b.i2)}</td><td>${v(b.costi)}</td><td class="u ${b.utile < 0 ? 'neg' : 'pos'}">${v(b.utile)}</td></tr></tfoot>
       </table>
-      <p class="sub" style="margin:8px 0 0">Attività 1 = Incasso1 − fatture − stipendi 1 (dipendenti e soci) − F24. <span class="solo-pieno">Attività 2 = Incasso2 − spese − stipendi 2 (dipendenti e soci). </span>La percentuale è l’utile sui ricavi.</p>
+      <p class="sub" style="margin:8px 0 0">Attività 1, al netto dell'IVA = Incasso1 senza IVA (<button type="button" class="iva-btn" id="ivaBtn">${fPct.format(IVA_INC)}%</button>, tolti ${eur(b.ivaInc / k)}) − fatture senza IVA (tolti ${eur(b.ivaFt / k)}) − stipendi 1 (dipendenti e soci) − F24. <span class="solo-pieno">Attività 2 = Incasso2 − spese − stipendi 2 (dipendenti e soci). </span>La percentuale è l’utile sui ricavi.</p>
     </div>
 
     ${costoGiorno}
@@ -1977,6 +2004,7 @@ $('v-giorni').addEventListener('click', e => { const r = e.target.closest('tr[da
 for(const id of ['v-giorni','v-spese','v-riepilogo']) $(id).addEventListener('keydown', e => { const z = e.target.closest('tr[data-m],tr[data-y]'); if(z && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); zoomIn(z); } });
 $('v-giorni').addEventListener('keydown', e => { const r = e.target.closest('tr[data-d]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openDay(r.dataset.d); } });
 $('v-riepilogo').addEventListener('click', e => {
+  if(e.target.closest('#ivaBtn')) return cambiaIva();
   const c = e.target.closest('[data-rp]'); if(c){ rpVista = c.dataset.rp; ssSet('bar-rp', rpVista); render(); return; }
   const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
 });
@@ -2303,6 +2331,7 @@ function startDemo(){
     setAccesso: async a => lsSet('bar-prova-accesso', JSON.stringify(a)),
     addFatture: async list => { FT = [...FT, ...list]; storeFt(); },
     setPromemoria: async p => { lsSet('bar-prova-prom', JSON.stringify(p)); },
+    setIva: async n => lsSet('bar-prova-iva', String(n)),
     setCatFt: async m => { CATF = m; lsSet('bar-prova-catft', JSON.stringify(CATF)); render(); if($('dlgCat').open) drawCat(); },
     setFtCat: async (id, c) => { FT = FT.map(f => f.id === id ? (c ? { ...f, categoria: c } : (({ categoria, ...r }) => r)(f)) : f); storeFt(); },
     delFattura: async id => { FT = FT.filter(f => f.id !== id); storeFt(); },
@@ -2311,8 +2340,9 @@ function startDemo(){
     updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
     delPers: async id => { PERS = PERS.filter(x => x.id !== id); storeSt(); },
     nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); localStorage.removeItem('bar-prova-catft'); localStorage.removeItem('bar-prova-accesso'); }catch(e){} location.href = location.pathname; },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); localStorage.removeItem('bar-prova-catft'); localStorage.removeItem('bar-prova-accesso'); localStorage.removeItem('bar-prova-iva'); }catch(e){} location.href = location.pathname; },
   };
+  { const v = Number(lsGet('bar-prova-iva')); if(lsGet('bar-prova-iva') && Number.isFinite(v)) IVA_INC = v; }
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
   signedIn({ email: 'prova@locale', nome: 'Prova' });
@@ -2359,6 +2389,7 @@ async function startFirebase(){
       delFattura: id => run(S.deleteDoc(S.doc(ftCol, id))),
       setCatFt: m => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), { mappa: m, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setFtCat: (id, c) => run(S.updateDoc(S.doc(ftCol, id), { categoria: c ? c : S.deleteField() })),
+      setIva: n => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'iva'), { aliquota: n, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setPromemoria: p => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), { ...p, da: auth.currentUser.email })),
       getAccesso: async () => { const s = await run(S.getDoc(S.doc(db, 'bar_impostazioni', 'accesso'))); return s.exists() ? s.data() : null; },
       setAccesso: a => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'accesso'), { ...a, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
@@ -2403,6 +2434,7 @@ async function startFirebase(){
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
           unsubs.push(S.onSnapshot(ftCol, s6 => { FT = s6.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), s8 => { CATF = (s8.exists() && s8.data().mappa) || {}; render(); if($('dlgCat').open) drawCat(); }, () => {}));
+          unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'iva'), s9 => { const a = s9.exists() ? Number(s9.data().aliquota) : NaN; IVA_INC = Number.isFinite(a) ? a : 10; render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), s7 => { promStato = s7.exists() ? s7.data() : null; }, () => {}));
           unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
           let seedFatto = false;
