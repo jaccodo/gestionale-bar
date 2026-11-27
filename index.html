@@ -321,6 +321,17 @@ main{touch-action:pan-x pan-y}
 
 /* riepilogo */
 .cards{display:grid;gap:12px}
+/* Torta Incasso1 / Incasso2 nel calendario */
+.card.torta{margin-top:12px}
+.torta-in{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.torta-in svg{flex:none}
+.torta-leg{flex:1;min-width:150px;display:grid;gap:10px}
+.torta-leg > div{display:grid;grid-template-columns:auto 1fr auto;column-gap:8px;align-items:baseline}
+.torta-leg .dot{width:10px;height:10px;align-self:center}
+.torta-leg b{font-size:1.05rem}
+.torta-leg small{grid-column:2 / 4;color:var(--muted);font-size:.8rem}
+.torta-leg .tt{border-top:1px solid var(--line);padding-top:8px}
+.torta-leg .tt .n{grid-column:1 / 3;font-weight:700}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .card h3{margin:0 0 10px;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .big{font-family:var(--f-display);font-weight:700;font-size:2rem;letter-spacing:-.01em;line-height:1.1}
@@ -916,6 +927,39 @@ function renderCal(){
   if(calLevel === 'm') renderCalMonth();
   else if(calLevel === 'y') renderCalYear();
   else renderCalYears();
+  $('v-calendario').insertAdjacentHTML('beforeend', tortaCal());
+}
+/* Torta Incasso1 / Incasso2 del periodo del calendario (mese, anno o gruppo di anni), con % e totale.
+   Fette separate da 2px del colore di fondo; nomi, importi e % scritti accanto (mai solo il colore). */
+function tortaCal(){
+  let i1 = 0, i2 = 0, nome;
+  if(calLevel === 'a'){
+    for(const [d, g] of Object.entries(G)){ const y = +d.slice(0, 4); if(y >= yearsStart && y < yearsStart + 12 && g){ i1 += g.incasso1 || 0; i2 += g.incasso2 || 0; } }
+    nome = `${yearsStart} – ${yearsStart + 11}`;
+  } else {
+    const s = stats(calLevel === 'm' ? month : month.slice(0, 4)); i1 = s.i1; i2 = s.i2;
+    nome = calLevel === 'm' ? fMonth.format(parse(month + '-01')) : month.slice(0, 4);
+  }
+  const t = i1 + i2;
+  if(t <= 0) return '';
+  const R = 70, C = 80;
+  const pt = a => [C + R * Math.sin(a), C - R * Math.cos(a)].map(x => x.toFixed(2)).join(' ');
+  const fetta = (da, a, col, tit) => a - da >= 2 * Math.PI - 1e-6
+    ? `<circle cx="${C}" cy="${C}" r="${R}" fill="${col}"><title>${tit}</title></circle>`
+    : `<path d="M${C} ${C} L${pt(da)} A${R} ${R} 0 ${a - da > Math.PI ? 1 : 0} 1 ${pt(a)} Z" fill="${col}" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round"><title>${tit}</title></path>`;
+  const a1 = i1 / t * 2 * Math.PI;
+  const svg = `<svg viewBox="0 0 160 160" width="128" height="128" role="img" aria-label="Incasso1 ${pct(i1, t)}, Incasso2 ${pct(i2, t)}, totale ${eur(t)}">
+    ${i1 > 0 ? fetta(0, a1, 'var(--i1)', `Incasso1 ${eur(i1)} · ${pct(i1, t)}`) : ''}${i2 > 0 ? fetta(a1, 2 * Math.PI, 'var(--i2)', `Incasso2 ${eur(i2)} · ${pct(i2, t)}`) : ''}</svg>`;
+  return `<div class="card torta solo-pieno">
+    <h3>Incasso1 e Incasso2 · ${nome}</h3>
+    <div class="torta-in">${svg}
+      <div class="torta-leg">
+        <div><span class="dot" style="background:var(--i1)"></span><span class="n">Incasso1</span><b class="num">${pct(i1, t)}</b><small class="num">${eur(i1)}</small></div>
+        <div><span class="dot" style="background:var(--i2)"></span><span class="n">Incasso2</span><b class="num">${pct(i2, t)}</b><small class="num">${eur(i2)}</small></div>
+        <div class="tt"><span class="n">Totale</span><b class="num">${eur(t)}</b></div>
+      </div>
+    </div>
+  </div>`;
 }
 function renderCalMonth(){
   const [y, mo] = month.split('-').map(Number), today = TODAY();
