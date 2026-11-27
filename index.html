@@ -108,6 +108,10 @@ table.xl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .xl td.day b{font-weight:700}
 .xl td.day small{color:var(--muted);font-size:.7rem;text-transform:uppercase;margin-left:4px}
 .xl td.day .nt{color:var(--am);font-size:.75rem;margin-left:3px}
+/* Nota del giorno: riga sotto il giorno, testo intero e a capo. */
+.xl tbody tr:has(+ tr.nota-r) td{border-bottom:0}
+.xl tr.nota-r td{text-align:left;white-space:normal;overflow:visible;font-size:.8rem;line-height:1.35;color:var(--muted);padding:0 10px 9px 30px}
+.xl tr.nota-r .nt{color:var(--am);margin-right:3px}
 .xl td.tot{font-weight:700}
 .xl td.am{color:var(--am)}
 .xl td.vuoto{color:var(--muted);opacity:.5}
@@ -887,7 +891,7 @@ function renderGiorni(){
       <td class="day${festa(d) ? ' hol' : ''}"${festa(d) ? ` title="${festa(d)}"` : ''}><b>${dt.getDate()}</b><small>${festa(d) ? '★ ' : ''}${fWd.format(dt).replace('.', '')}</small>${nota ? '<span class="nt" aria-label="con nota">✎</span>' : ''}</td>
       ${cell(g.mattina, 'am')}${cell(g.incasso1)}${cell(g.incasso2)}
       ${hasInc(g) ? `<td class="tot">${num(tot(g))}</td>` : '<td class="vuoto tot">–</td>'}
-    </tr>`;
+    </tr>${nota ? `<tr class="nota-r${d === today ? ' today' : ''}" data-d="${d}"><td colspan="5"><span class="nt">✎</span> ${esc(nota).replace(/\n/g, '<br>')}</td></tr>` : ''}`;
   }).join('');
   const splitTot = s.am + s.pm;
   $('v-giorni').innerHTML = list.length ? `<div class="sheetwrap"><table class="xl">
