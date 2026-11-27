@@ -171,7 +171,7 @@ main{touch-action:pan-x pan-y}
 .ybox.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .ybox.fut{opacity:.45;cursor:default}
 .xl small.pc{display:block;font-size:.68rem;font-weight:600;color:var(--muted);line-height:1.1}
-.xl.mesi{min-width:600px}
+.xl.mesi{min-width:680px}
 .muted{color:var(--muted)}
 
 /* spese Incasso2 */
@@ -264,6 +264,18 @@ main{touch-action:pan-x pan-y}
 .xl small.autob{margin-left:6px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 6px}
 .xl tr[data-auto]{cursor:pointer}
 
+/* fatture Incasso1 */
+.ft-top{display:flex;gap:8px;margin-bottom:12px}
+.ft-top .btn{height:40px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.ft-top .btn.add{flex:1}
+.xl.ft col.c-forn{width:auto}
+.xl.ft td.forn{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xl.ft td.forn small{display:block;color:var(--muted);font-size:.7rem}
+.xl.ft td.neg{color:var(--bad)}
+.dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0 0 14px;font-size:.9rem}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
+
 /* riepilogo */
 .cards{display:grid;gap:12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
@@ -348,6 +360,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
       <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
       <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button">Spese</button>
+      <button class="tab" role="tab" id="tab-fatture" aria-selected="false" type="button">Fatture</button>
       <button class="tab" role="tab" id="tab-stipendi" aria-selected="false" type="button">Stipendi</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
     </nav>
@@ -372,6 +385,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <section id="v-giorni"></section>
     <section id="v-calendario" class="cal" hidden></section>
     <section id="v-spese" hidden></section>
+    <section id="v-fatture" hidden></section>
     <section id="v-stipendi" class="viz" hidden></section>
     <section id="v-rs" class="viz" hidden></section>
     <section id="v-riepilogo" hidden></section>
@@ -439,6 +453,18 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
         <button class="btn ghost" id="spCancel" type="button">Annulla</button>
         <button class="btn" id="spSave" type="submit">Salva</button>
       </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgFt">
+  <form class="sheet" method="dialog" novalidate>
+    <h2 id="ftTitle" style="text-transform:none"></h2>
+    <p class="sub" style="margin:-8px 0 14px">Fattura ricevuta · a bilancio con Incasso1</p>
+    <dl class="dl" id="ftDl"></dl>
+    <div class="actions">
+      <button class="btn danger" id="ftDel" type="button">Elimina</button>
+      <div class="r"><button class="btn" id="ftClose" type="button">Chiudi</button></div>
     </div>
   </form>
 </dialog>
@@ -612,6 +638,40 @@ const tipoCol = t => `var(--t${Math.max(0, TIPI_ID.indexOf(t))})`;
 const tipoTag = t => `<span class="tipo"><i style="background:${tipoCol(t)}">${t}</i><span>${esc(tipoNome(t))}</span></span>`;
 // Tipologia in cui finisce da sola la somma degli stipendi 2 (dipendenti e soci) di ogni busta paga.
 const TIPO_STIP = 'g';
+// Fatture ricevute (a bilancio con Incasso1): { id, tipo, numero, data, piva, fornitore, imponibile, iva, totale, sdi, fonte }.
+// Le note di credito sono salvate con importi negativi.
+let FT = [];
+function fattureMese(p){
+  const list = FT.filter(f => f.data && f.data.startsWith(p + '-'));
+  let imp = 0, iva = 0, tot = 0; const perF = {};
+  for(const f of list){
+    imp += f.imponibile || 0; iva += f.iva || 0; tot += f.totale || 0;
+    const k = f.piva || f.fornitore; const x = perF[k] ||= { nome: f.fornitore, tot: 0, n: 0 }; x.tot += f.totale || 0; x.n++;
+  }
+  return { list, imp: round2(imp), iva: round2(iva), tot: round2(tot), perF };
+}
+/* CSV delle fatture ricevute (cassetto fiscale / Cassa in Cloud): separatore ";", numeri all'italiana, date gg/mm/aaaa. */
+function leggiCsvFatture(testo){
+  const riga = line => { const out = []; let cur = '', q = false; for(let i = 0; i < line.length; i++){ const c = line[i]; if(q){ if(c === '"' && line[i + 1] === '"'){ cur += '"'; i++; } else if(c === '"') q = false; else cur += c; } else if(c === '"') q = true; else if(c === ';' || c === '\t') { out.push(cur.trim()); cur = ''; } else cur += c; } out.push(cur.trim()); return out; };
+  const righe = testo.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim()).map(riga);
+  if(righe.length < 2) throw new Error('il file è vuoto');
+  const H = righe[0].map(x => x.toLowerCase());
+  // Cerca le chiavi in ordine: la prima è la più precisa (es. "denominazione" prima di "fornitore", che c'è anche in "identificativo fornitore").
+  const col = (...k) => { for(const y of k){ const i = H.findIndex(x => x.includes(y)); if(i >= 0) return i; } return -1; };
+  const c = { tipo: col('tipo documento', 'tipo'), numero: col('numero'), data: col('data emissione', 'data'), piva: col('identificativo fornitore', 'partita iva', 'p.iva'),
+    forn: col('denominazione', 'fornitore'), imp: col('imponibile', 'importo'), iva: col('imposta', 'iva'), sdi: col('sdi') };
+  if(c.numero < 0 || c.data < 0 || c.imp < 0 || c.forn < 0) throw new Error('non sembra un elenco di fatture (mancano numero, data, fornitore o imponibile)');
+  const n = s => { s = String(s || '').replace(/\s|€/g, ''); if(s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = Number(s); return Number.isFinite(v) ? v : 0; };
+  return righe.slice(1).map(r => {
+    const [d, m, y] = String(r[c.data] || '').split(/[\/\-.]/);
+    const data = y && y.length === 4 ? `${y}-${pad(+m)}-${pad(+d)}` : /^\d{4}-\d{2}-\d{2}$/.test(r[c.data]) ? r[c.data] : '';
+    const tipo = c.tipo >= 0 ? r[c.tipo] : 'Fattura';
+    const segno = /credito/i.test(tipo) ? -1 : 1;
+    const imponibile = round2(segno * Math.abs(n(r[c.imp]))), iva = round2(segno * Math.abs(c.iva >= 0 ? n(r[c.iva]) : 0));
+    return { tipo, numero: r[c.numero], data, piva: c.piva >= 0 ? r[c.piva] : '', fornitore: r[c.forn], imponibile, iva, totale: round2(imponibile + iva), sdi: c.sdi >= 0 ? r[c.sdi] : '', fonte: 'csv' };
+  }).filter(f => f.data && f.numero && f.fornitore);
+}
+const chiaveFt = f => f.sdi ? 'sdi_' + f.sdi : ('f_' + (f.piva || f.fornitore) + '_' + f.numero).replace(/[^\w.-]/g, '_');
 function speseMese(m){
   const list = SP.filter(s => s.data && s.data.startsWith(m + '-'));
   // Stipendi 2 della scheda Stipendi: una spesa automatica per ogni busta paga del periodo (F24 escluso).
@@ -628,7 +688,7 @@ function speseMese(m){
 }
 let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
 let me = null, backend = null;
-let view = ['giorni','calendario','spese','stipendi','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
+let view = ['giorni','calendario','spese','fatture','stipendi','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
 let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
 
 const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
@@ -676,7 +736,7 @@ function render(){
   $('mTitle').classList.toggle('zoom', lvl !== 'a');
   $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
   $('oggi').hidden = lvl === 'm' && month === cur;
-  for(const v of ['giorni','calendario','spese','stipendi','riepilogo']){
+  for(const v of ['giorni','calendario','spese','fatture','stipendi','riepilogo']){
     $('tab-' + v).setAttribute('aria-selected', view === v);
     $('v-' + v).hidden = view !== v || (v === 'stipendi' && rsOpen);
   }
@@ -685,6 +745,7 @@ function render(){
   if(view === 'giorni') renderGiorni();
   else if(view === 'calendario') renderCal();
   else if(view === 'spese') renderSpese();
+  else if(view === 'fatture') renderFatture();
   else if(view === 'stipendi') rsOpen ? renderRS() : renderStipendi();
   else renderRiepilogo();
 }
@@ -809,15 +870,15 @@ function periodiTabella(){
 /* Tabella con tutte le mensilità dell'anno (o tutti gli anni). Tocca una riga per ingrandire. */
 function tabellaPeriodi(){
   const periodi = periodiTabella(), anni = calLevel === 'a';
-  const dati = periodi.map(p => [p, stats(p), speseMese(p).totale]);
-  if(!dati.some(([, s, spm]) => s.incDays || spm)) return `<div class="card"><p class="muted" style="margin:0">Nessun dato ${anni ? 'in questi anni' : 'nel ' + month.slice(0, 4)}.</p></div>`;
-  const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0, sp: 0 };
+  const dati = periodi.map(p => [p, stats(p), speseMese(p).totale, fattureMese(p).tot]);
+  if(!dati.some(([, s, spm, ftm]) => s.incDays || spm || ftm)) return `<div class="card"><p class="muted" style="margin:0">Nessun dato ${anni ? 'in questi anni' : 'nel ' + month.slice(0, 4)}.</p></div>`;
+  const A = { i1: 0, i2: 0, am: 0, pm: 0, tot: 0, giorni: 0, sp: 0, ft: 0 };
   const sel = anni ? month.slice(0, 4) : month;
   const attr = p => `${anni ? 'data-y' : 'data-m'}="${p}"${p === sel ? ' class="today"' : ''}`;
-  const rows = dati.map(([p, s, spm]) => {
-    A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays; A.sp += spm;
+  const rows = dati.map(([p, s, spm, ftm]) => {
+    A.i1 += s.i1; A.i2 += s.i2; A.am += s.am; A.pm += s.pm; A.tot += s.tot; A.giorni += s.incDays; A.sp += spm; A.ft += ftm;
     const sp = s.am + s.pm;
-    if(!s.incDays && !spm) return `<tr tabindex="0" ${attr(p)}><td class="day"><b>${etichetta(p)}</b></td><td class="vuoto" colspan="7">–</td></tr>`;
+    if(!s.incDays && !spm && !ftm) return `<tr tabindex="0" ${attr(p)}><td class="day"><b>${etichetta(p)}</b></td><td class="vuoto" colspan="8">–</td></tr>`;
     return `<tr tabindex="0" ${attr(p)}>
       <td class="day"><b>${etichetta(p)}</b></td>
       <td class="am">${num(s.am)}<small class="pc">${s.splitDays ? pct(s.am, sp) : ''}</small></td>
@@ -825,6 +886,7 @@ function tabellaPeriodi(){
       <td>${num(s.i1)}<small class="pc">${pct(s.i1, s.tot)}</small></td>
       <td>${num(s.i2)}<small class="pc">${pct(s.i2, s.tot)}</small></td>
       <td class="tot">${num(s.tot)}<small class="pc">${s.incDays} gg · media ${fNum0.format(s.media)}</small></td>
+      <td>${num(ftm)}<small class="pc">${s.i1 ? 'netto I1 ' + fNum0.format(s.i1 - ftm) : ''}</small></td>
       <td>${num(spm)}<small class="pc">${s.i2 ? 'netto I2 ' + fNum0.format(s.i2 - spm) : ''}</small></td>
     </tr>`;
   }).join('');
@@ -832,8 +894,8 @@ function tabellaPeriodi(){
   return `<div class="card" style="padding:0;overflow:hidden">
     <h3 style="padding:14px 16px 0">${anni ? 'Tutti gli anni' : 'Tutti i mesi del ' + month.slice(0, 4)}</h3>
     <div class="hscroll" style="overflow-x:auto"><table class="xl mesi">
-      <colgroup><col class="c-day"><col><col><col><col><col><col></colgroup>
-      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Spese I2</th></tr></thead>
+      <colgroup><col class="c-day"><col><col><col><col><col><col><col></colgroup>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Fatture I1</th><th>Spese I2</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td>
         <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
@@ -841,9 +903,10 @@ function tabellaPeriodi(){
         <td>${num(A.i1)}<small class="pc">${pct(A.i1, A.tot)}</small></td>
         <td>${num(A.i2)}<small class="pc">${pct(A.i2, A.tot)}</small></td>
         <td>${num(A.tot)}<small class="pc">${A.giorni} gg · media ${fNum0.format(A.giorni ? A.tot / A.giorni : 0)}</small></td>
+        <td>${num(A.ft)}<small class="pc">${A.i1 ? 'netto I1 ' + fNum0.format(A.i1 - A.ft) : ''}</small></td>
         <td>${num(A.sp)}<small class="pc">${A.i2 ? 'netto I2 ' + fNum0.format(A.i2 - A.sp) : ''}</small></td></tr></tfoot>
     </table></div>
-    <p class="hint" style="padding:0 16px 14px">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprirlo; tocca il titolo in alto (o pizzica con due dita) per vedere gli anni'}. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale. Spese I2 = spese della scheda Spese, con Incasso2 al netto.</p>
+    <p class="hint" style="padding:0 16px 14px">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprirlo; tocca il titolo in alto (o pizzica con due dita) per vedere gli anni'}. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale. Fatture I1 = fatture ricevute (con IVA), con Incasso1 al netto; Spese I2 = spese della scheda Spese, con Incasso2 al netto.</p>
   </div>`;
 }
 const tabellaMesi = tabellaPeriodi;
@@ -892,6 +955,15 @@ function renderRiepilogo(){
       </div>
     </div>
 
+    ${(() => { const fm = fattureMese(P); return `<div class="card">
+      <h3>Incasso1 e fatture</h3>
+      <div class="kpis" style="margin-top:0">
+        <div><div class="l">Incasso1</div><div class="v num">${eur(s.i1)}</div></div>
+        <div><div class="l">Fatture</div><div class="v num">${eur(fm.tot)}</div><div class="sub" style="margin:0;font-size:.74rem">${fm.list.length} · ${s.i1 ? pct(fm.tot, s.i1) + ' di Incasso1' : ''}</div></div>
+        <div><div class="l">Incasso1 − fatture</div><div class="v num" style="color:${s.i1 - fm.tot < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(s.i1 - fm.tot)}</div></div>
+      </div>
+    </div>`; })()}
+
     ${(() => { const sm = speseMese(P); return `<div class="card">
       <h3>Incasso2 e spese</h3>
       <div class="kpis" style="margin-top:0">
@@ -935,6 +1007,112 @@ function renderRiepilogo(){
     ${tabellaMesi()}
   </div>`;
 }
+
+/* ---------- fatture (Incasso1) ---------- */
+function renderFatture(){
+  const top = `<div class="ft-top">
+      <label class="btn add" for="ftFile">Importa fatture (CSV)</label>
+      <input type="file" id="ftFile" accept=".csv,text/csv,text/plain" multiple hidden>
+    </div>`;
+  const anni = calLevel === 'a';
+  const blocco = (titolo, fm, s) => {
+    const netto = s.i1 - fm.tot;
+    const forn = Object.values(fm.perF).sort((a, b) => b.tot - a.tot);
+    const maxF = Math.max(1, ...forn.map(f => Math.abs(f.tot)));
+    return `<div class="card">
+        <h3>${titolo}</h3>
+        <div class="big num">${eur(fm.tot)}</div>
+        <div class="sub">${fm.list.length} ${fm.list.length === 1 ? 'fattura' : 'fatture'} · imponibile ${eur(fm.imp)} · IVA ${eur(fm.iva)}</div>
+        <div class="kpis">
+          <div><div class="l">Incasso1</div><div class="v num">${eur(s.i1)}</div></div>
+          <div><div class="l">Incasso1 − fatture</div><div class="v num" style="color:${netto < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(netto)}</div></div>
+          <div><div class="l">Fatture su Incasso1</div><div class="v num">${s.i1 ? pct(fm.tot, s.i1) : '–'}</div></div>
+        </div>
+      </div>
+      ${forn.length ? `<div class="card"><h3>Per fornitore</h3><div class="ptipi">${forn.slice(0, 12).map(f => `
+        <div class="ptipo"><span class="tipo"><span>${esc(f.nome)}</span></span><b class="num">${eur(f.tot)}<small>${f.n} · ${pct(f.tot, fm.tot)}</small></b>
+          <div class="b"><i style="width:${Math.abs(f.tot) / maxF * 100}%;background:var(--i1)"></i></div></div>`).join('')}${forn.length > 12 ? `<p class="sub" style="margin:4px 0 0">e altri ${forn.length - 12} fornitori</p>` : ''}</div></div>` : ''}`;
+  };
+  if(calLevel === 'm'){
+    const fm = fattureMese(month), s = stats(month);
+    const list = [...fm.list].sort((a, b) => b.data.localeCompare(a.data) || String(a.fornitore).localeCompare(String(b.fornitore)));
+    const rows = list.map(f => { const dt = parse(f.data); return `<tr tabindex="0" data-ft="${esc(f.id)}">
+      <td class="day"><b>${dt.getDate()}</b><small>${fWd.format(dt).replace('.', '')}</small></td>
+      <td class="forn">${esc(f.fornitore)}<small>${esc(/credito/i.test(f.tipo) ? 'Nota di credito ' : 'N. ')}${esc(f.numero)}</small></td>
+      <td${f.totale < 0 ? ' class="neg"' : ''}>${num(f.imponibile)}</td><td${f.totale < 0 ? ' class="neg"' : ''}>${num(f.iva)}</td><td class="tot${f.totale < 0 ? ' neg' : ''}">${num(f.totale)}</td></tr>`; }).join('');
+    $('v-fatture').innerHTML = `${top}<div class="cards">${blocco('Fatture del mese · Incasso1', fm, s)}
+      ${list.length ? `<div class="sheetwrap"><div class="hscroll" style="overflow-x:auto"><table class="xl ft" style="min-width:440px">
+        <colgroup><col class="c-day"><col class="c-forn"><col style="width:84px"><col style="width:72px"><col style="width:90px"></colgroup>
+        <thead><tr><th>Data</th><th class="l" style="text-align:left">Fornitore</th><th>Imponib.</th><th>IVA</th><th>Totale</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>Totale</td><td></td><td>${num(fm.imp)}</td><td>${num(fm.iva)}</td><td>${num(fm.tot)}</td></tr></tfoot>
+      </table></div></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna fattura in questo mese. Importa il CSV delle fatture ricevute.</p></div>'}</div>
+      <p class="hint">Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
+    return;
+  }
+  const periodi = periodiTabella();
+  let T = { n: 0, imp: 0, iva: 0, tot: 0, i1: 0 };
+  const rows = periodi.map(p => {
+    const fm = fattureMese(p), i1 = stats(p).i1; T.n += fm.list.length; T.imp += fm.imp; T.iva += fm.iva; T.tot += fm.tot; T.i1 += i1;
+    return `<tr tabindex="0" ${anni ? 'data-y' : 'data-m'}="${p}"${p === (anni ? month.slice(0, 4) : month) ? ' class="today"' : ''}><td class="day"><b>${etichetta(p)}</b></td>
+      <td>${fm.list.length || '–'}</td><td class="tot">${fm.tot ? num(fm.tot) : '–'}</td><td>${i1 ? num(i1) : '–'}</td>
+      <td style="color:${i1 - fm.tot < 0 ? 'var(--bad)' : 'inherit'}">${i1 || fm.tot ? num(i1 - fm.tot) : '–'}</td></tr>`;
+  }).join('');
+  const tabella = rows ? `<div class="sheetwrap"><div class="hscroll" style="overflow-x:auto"><table class="xl" style="min-width:430px">
+    <colgroup><col class="c-day"><col style="width:44px"><col><col><col></colgroup>
+    <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>N.</th><th>Fatture</th><th>Incasso1</th><th>I1 − fatt.</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td><td>${T.n}</td><td>${num(T.tot)}</td><td>${num(T.i1)}</td><td>${num(T.i1 - T.tot)}</td></tr></tfoot>
+  </table></div></div>` : '';
+  const P = month.slice(0, 4);
+  $('v-fatture').innerHTML = `${top}<div class="cards">${anni ? '' : blocco('Fatture del ' + P + ' · Incasso1', fattureMese(P), stats(P))}${tabella || '<div class="card"><p class="muted" style="margin:0">Nessuna fattura.</p></div>'}</div>
+    <p class="hint">Fatture con IVA. Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per vederne le fatture; tocca il titolo in alto (o pizzica) per vedere gli anni'}.</p>`;
+}
+
+async function importaFatture(files){
+  let lette = [];
+  for(const f of files){
+    const buf = await f.arrayBuffer();
+    let testo = new TextDecoder('utf-8').decode(buf);
+    if(testo.includes('\uFFFD')) testo = new TextDecoder('windows-1252').decode(buf);
+    lette = lette.concat(leggiCsvFatture(testo));
+  }
+  const esistenti = new Set(FT.map(f => f.id));
+  const nuove = [], viste = new Set();
+  for(const f of lette){ const id = chiaveFt(f); if(esistenti.has(id) || viste.has(id)) continue; viste.add(id); nuove.push({ ...f, id, importata: new Date().toISOString() }); }
+  if(nuove.length) await backend.addFatture(nuove);
+  const doppie = lette.length - nuove.length;
+  toast(nuove.length ? `${nuove.length === 1 ? 'Importata 1 fattura' : `Importate ${nuove.length} fatture`}${doppie ? `, ${doppie === 1 ? '1 era già presente' : `${doppie} erano già presenti`}` : ''}` : 'Tutte le fatture del file erano già presenti');
+  if(nuove.length){ const ult = nuove.map(f => f.data).sort().pop(); month = ult.slice(0, 7); ssSet('bar-mese', month); calLevel = 'y'; render(); }
+}
+$('v-fatture').addEventListener('change', async e => {
+  if(e.target.id !== 'ftFile' || !e.target.files.length) return;
+  try{ await importaFatture([...e.target.files]); }
+  catch(er){ toast('Import non riuscito: ' + (er.message || 'controlla il file')); }
+  e.target.value = '';
+});
+let ftEdit = null;
+function openFt(id){
+  const f = FT.find(x => x.id === id); if(!f) return;
+  ftEdit = id;
+  $('ftTitle').textContent = f.fornitore;
+  const r = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+  $('ftDl').innerHTML = r('Documento', esc(f.tipo || 'Fattura') + ' n. ' + esc(f.numero)) + r('Data emissione', fLong.format(parse(f.data))) + (f.piva ? r('Partita IVA', esc(f.piva)) : '')
+    + r('Imponibile', eur(f.imponibile)) + r('IVA', eur(f.iva)) + r('Totale', `<span style="font-size:1.1rem">${eur(f.totale)}</span>`) + (f.sdi ? r('Identificativo SDI', esc(f.sdi)) : '') + r('Arrivata da', f.fonte === 'csv' ? 'file CSV' : esc(f.fonte || '–'));
+  $('dlgFt').showModal();
+}
+$('ftClose').onclick = () => $('dlgFt').close();
+$('dlgFt').addEventListener('click', e => { if(e.target === $('dlgFt')) $('dlgFt').close(); });
+$('ftDel').onclick = async () => {
+  if(!ftEdit || !confirm('Eliminare questa fattura dal gestionale? Se reimporti il file tornerà.')) return;
+  try{ await backend.delFattura(ftEdit); $('dlgFt').close(); toast('Fattura eliminata'); }
+  catch(e){ toast('Non riuscito: ' + (e.message || 'riprova')); }
+};
+$('v-fatture').addEventListener('click', e => {
+  const r = e.target.closest('tr[data-ft]'); if(r) return openFt(r.dataset.ft);
+  const z = e.target.closest('tr[data-m],tr[data-y]'); if(z) zoomIn(z);
+});
+$('v-fatture').addEventListener('keydown', e => { const r = e.target.closest('tr[data-ft],tr[data-m],tr[data-y]'); if(r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
 
 /* ---------- stipendi ---------- */
 function renderStipendi(){
@@ -1435,6 +1613,7 @@ const setView = v => { view = v; ssSet('bar-vista', v); render(); window.scrollT
 $('tab-giorni').onclick = () => setView('giorni');
 $('tab-calendario').onclick = () => setView('calendario');
 $('tab-spese').onclick = () => setView('spese');
+$('tab-fatture').onclick = () => setView('fatture');
 $('tab-stipendi').onclick = () => { rsOpen = false; setView('stipendi'); };
 $('tab-riepilogo').onclick = () => setView('riepilogo');
 
@@ -1515,13 +1694,15 @@ if(DEMO) startDemo(); else startFirebase();
 
 function startDemo(){
   // Prova sul PC senza login: dati finti degli ultimi due mesi, restano solo in questo browser.
-  const KEY = 'bar-prova-3';
+  const KEY = 'bar-prova-4';
   let saved = null; try{ saved = JSON.parse(lsGet(KEY) || 'null'); }catch(e){}
   if(!saved){
     saved = {};
     const today = TODAY(), cur = today.slice(0, 7);
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for(const m of [shiftMonth(cur, -2), shiftMonth(cur, -1), cur]) for(const d of monthDays(m)){
+    // Incassi finti da gennaio dell'anno in corso, per confrontarli con le fatture della simulazione.
+    const mesiDemo = []; for(let m = cur.slice(0, 4) + '-01'; m <= cur; m = shiftMonth(m, 1)) mesiDemo.push(m);
+    for(const m of mesiDemo) for(const d of monthDays(m)){
       if(d >= today) continue;
       const wd = parse(d).getDay(); if(wd === 1) continue;              // lunedì chiuso
       const we = wd === 0 || wd === 6;
@@ -1579,6 +1760,16 @@ function startDemo(){
     st = { ST: S, PERS: P.map(([id, nome, , , , al]) => ({ id, nome, attivo: !al })) };
   }
   ST = st.ST; PERS = st.PERS;
+  // Simulazione fatture: fatture inventate (fornitori e numeri di fantasia). Quelle vere si importano dal pulsante e restano solo nel browser.
+  const KEY_FT = 'bar-prova-fatture-2';
+  let ft = null; try{ ft = JSON.parse(lsGet(KEY_FT) || 'null'); }catch(e){}
+  if(!ft){
+    const righe = [["Fattura","DEMO-1-1","2026-01-03","00000000011","Luce e Gas Esempio Srl",109.73,10.97,"DEMO100000"],["Fattura","DEMO-1-2","2026-01-07","00000000022","Telefonia Prova SpA",29.5,6.49,"DEMO100001"],["Fattura","DEMO-1-4","2026-01-16","00000000044","Caffè Immaginario Srl",356.45,78.42,"DEMO100002"],["Fattura","DEMO-2-1","2026-02-05","00000000011","Luce e Gas Esempio Srl",97.53,9.75,"DEMO100003"],["Fattura","DEMO-2-2","2026-02-08","00000000022","Telefonia Prova SpA",29.97,6.59,"DEMO100004"],["Fattura","DEMO-2-3","2026-02-11","00000000033","Acqua Fantasia SpA",69.62,6.96,"DEMO100005"],["Fattura","DEMO-2-4","2026-02-15","00000000044","Caffè Immaginario Srl",309.24,68.03,"DEMO100006"],["Fattura","DEMO-3-1","2026-03-03","00000000011","Luce e Gas Esempio Srl",93.02,9.3,"DEMO100007"],["Fattura","DEMO-3-2","2026-03-09","00000000022","Telefonia Prova SpA",31.17,6.86,"DEMO100008"],["Fattura","DEMO-3-4","2026-03-16","00000000044","Caffè Immaginario Srl",410.36,90.28,"DEMO100009"],["Fattura","DEMO-3-5","2026-03-19","00000000055","Bevande Demo Srl",231.07,50.84,"DEMO100010"],["Fattura","DEMO-3-6","2026-03-23","00000000066","Pulizie Finte Snc",79.37,17.46,"DEMO100011"],["Fattura","DEMO-4-1","2026-04-03","00000000011","Luce e Gas Esempio Srl",100.41,10.04,"DEMO100012"],["Fattura","DEMO-4-2","2026-04-09","00000000022","Telefonia Prova SpA",31.59,6.95,"DEMO100013"],["Fattura","DEMO-4-3","2026-04-11","00000000033","Acqua Fantasia SpA",118.39,11.84,"DEMO100014"],["Fattura","DEMO-4-5","2026-04-21","00000000055","Bevande Demo Srl",250.39,55.09,"DEMO100015"],["Fattura","DEMO-5-1","2026-05-05","00000000011","Luce e Gas Esempio Srl",100.9,10.09,"DEMO100016"],["Fattura","DEMO-5-2","2026-05-09","00000000022","Telefonia Prova SpA",30.62,6.74,"DEMO100017"],["Fattura","DEMO-5-4","2026-05-15","00000000044","Caffè Immaginario Srl",419.79,92.35,"DEMO100018"],["Fattura","DEMO-5-6","2026-05-25","00000000066","Pulizie Finte Snc",43.89,9.66,"DEMO100019"],["Fattura","DEMO-6-1","2026-06-04","00000000011","Luce e Gas Esempio Srl",112.98,11.3,"DEMO100020"],["Fattura","DEMO-6-2","2026-06-09","00000000022","Telefonia Prova SpA",30.91,6.8,"DEMO100021"],["Fattura","DEMO-6-3","2026-06-11","00000000033","Acqua Fantasia SpA",102.84,10.28,"DEMO100022"],["Fattura","DEMO-6-4","2026-06-16","00000000044","Caffè Immaginario Srl",682.84,150.22,"DEMO100023"],["Fattura","DEMO-6-5","2026-06-20","00000000055","Bevande Demo Srl",439.53,96.7,"DEMO100024"],["Fattura","DEMO-7-1","2026-07-05","00000000011","Luce e Gas Esempio Srl",101.06,10.11,"DEMO100025"],["Fattura","DEMO-7-2","2026-07-08","00000000022","Telefonia Prova SpA",28.61,6.29,"DEMO100026"],["Fattura","DEMO-7-4","2026-07-17","00000000044","Caffè Immaginario Srl",535.7,117.85,"DEMO100027"],["Fattura","DEMO-7-6","2026-07-23","00000000066","Pulizie Finte Snc",54.23,11.93,"DEMO100028"],["Fattura","DEMO-8-1","2026-08-03","00000000011","Luce e Gas Esempio Srl",114.17,11.42,"DEMO100029"],["Fattura","DEMO-8-2","2026-08-08","00000000022","Telefonia Prova SpA",28.19,6.2,"DEMO100030"],["Fattura","DEMO-8-3","2026-08-11","00000000033","Acqua Fantasia SpA",96.28,9.63,"DEMO100031"],["Fattura","DEMO-8-4","2026-08-15","00000000044","Caffè Immaginario Srl",370.49,81.51,"DEMO100032"],["Fattura","DEMO-8-5","2026-08-20","00000000055","Bevande Demo Srl",409.88,90.17,"DEMO100033"],["Fattura","DEMO-8-6","2026-08-23","00000000066","Pulizie Finte Snc",66.99,14.74,"DEMO100034"],["Fattura","DEMO-9-1","2026-09-05","00000000011","Luce e Gas Esempio Srl",116.9,11.69,"DEMO100035"],["Fattura","DEMO-9-2","2026-09-07","00000000022","Telefonia Prova SpA",30.1,6.62,"DEMO100036"],["Fattura","DEMO-9-4","2026-09-15","00000000044","Caffè Immaginario Srl",544.76,119.85,"DEMO100037"],["Fattura","DEMO-9-6","2026-09-24","00000000066","Pulizie Finte Snc",63.06,13.87,"DEMO100038"],["Fattura","DEMO-10-1","2026-10-05","00000000011","Luce e Gas Esempio Srl",110.36,11.04,"DEMO100039"],["Fattura","DEMO-10-2","2026-10-07","00000000022","Telefonia Prova SpA",30.41,6.69,"DEMO100040"],["Fattura","DEMO-10-3","2026-10-12","00000000033","Acqua Fantasia SpA",111.96,11.2,"DEMO100041"],["Fattura","DEMO-10-5","2026-10-21","00000000055","Bevande Demo Srl",462.36,101.72,"DEMO100042"],["Fattura","DEMO-10-6","2026-10-24","00000000066","Pulizie Finte Snc",71.91,15.82,"DEMO100043"],["Fattura","DEMO-11-1","2026-11-03","00000000011","Luce e Gas Esempio Srl",109.56,10.96,"DEMO100044"],["Fattura","DEMO-11-2","2026-11-07","00000000022","Telefonia Prova SpA",31.3,6.89,"DEMO100045"],["Nota di credito","DEMO-NC1","2026-06-20","00000000022","Telefonia Prova SpA",-10,-2.2,"DEMO100046"]];
+    ft = righe.map(([tipo, numero, data, piva, fornitore, imponibile, iva, sdi]) => ({ tipo, numero, data, piva, fornitore, imponibile, iva, totale: round2(imponibile + iva), sdi, fonte: 'csv' }))
+      .map(f => ({ ...f, id: chiaveFt(f) }));
+  }
+  FT = ft;
+  const storeFt = () => { lsSet(KEY_FT, JSON.stringify(FT)); render(); };
   const storeSt = () => { lsSet(KEY_ST, JSON.stringify({ ST, PERS })); render(); };
   const storeSp = () => { lsSet(KEY_SP, JSON.stringify({ SP, TIPI })); render(); };
   const store = () => lsSet(KEY, JSON.stringify(G));
@@ -1590,12 +1781,14 @@ function startDemo(){
     delSpesa: async id => { SP = SP.filter(s => s.id !== id); storeSp(); },
     setTipi: async t => { TIPI = t; storeSp(); },
     setSt: async (id, r) => { ST = { ...ST, [id]: r }; storeSt(); },
+    addFatture: async list => { FT = [...FT, ...list]; storeFt(); },
+    delFattura: async id => { FT = FT.filter(f => f.id !== id); storeFt(); },
     delSt: async id => { const c = { ...ST }; delete c[id]; ST = c; storeSt(); },
     addPers: async p => { PERS = [...PERS, { ...p, id: 'p' + Math.random().toString(36).slice(2, 8) }]; storeSt(); },
     updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
     delPers: async id => { PERS = PERS.filter(x => x.id !== id); storeSt(); },
     nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); }catch(e){} location.href = location.pathname; },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); }catch(e){} location.href = location.pathname; },
   };
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
@@ -1620,6 +1813,7 @@ async function startFirebase(){
     const spCol = S.collection(db, 'bar_spese');
     const tipiDoc = S.doc(db, 'bar_impostazioni', 'tipologie');
     const stCol = S.collection(db, 'bar_stipendi');
+    const ftCol = S.collection(db, 'bar_fatture');
     const persCol = S.collection(db, 'bar_persone');
     const nice = e => new Error(e && e.code === 'permission-denied' ? 'permesso negato' : (e && e.message) || 'controlla la connessione');
     const run = async p => { try{ return await p; }catch(e){ throw nice(e); } };
@@ -1631,6 +1825,15 @@ async function startFirebase(){
       updSpesa: (id, r) => run(S.updateDoc(S.doc(spCol, id), { ...r, aggiornata: S.serverTimestamp(), da: auth.currentUser.email })),
       delSpesa: id => run(S.deleteDoc(S.doc(spCol, id))),
       setTipi: t => run(S.setDoc(tipiDoc, t)),
+      addFatture: async list => {
+        // A blocchi di 400 (limite Firestore 500 scritture per batch). Id = identificativo SDI: niente doppioni.
+        for(let i = 0; i < list.length; i += 400){
+          const b = S.writeBatch(db);
+          list.slice(i, i + 400).forEach(f => { const { id, ...dati } = f; b.set(S.doc(ftCol, id), { ...dati, da: auth.currentUser.email }); });
+          await run(b.commit());
+        }
+      },
+      delFattura: id => run(S.deleteDoc(S.doc(ftCol, id))),
       setSt: (id, r) => run(S.setDoc(S.doc(stCol, id), { ...r, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
       delSt: id => run(S.deleteDoc(S.doc(stCol, id))),
       addPers: p => run(S.addDoc(persCol, p)),
@@ -1660,8 +1863,8 @@ async function startFirebase(){
     A.onAuthStateChanged(auth, user => {
       if(unsub){ unsub(); unsub = null; }
       unsubs.forEach(u => u()); unsubs = [];
-      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers']) if($(d).open) $(d).close();
-      if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; rsOpen = false; gate('login'); return; }
+      for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt']) if($(d).open) $(d).close();
+      if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
       let first = true;
       unsub = S.onSnapshot(col, snap => {
@@ -1670,6 +1873,7 @@ async function startFirebase(){
           first = false; gate(null); signedIn({ email: user.email, nome: user.displayName });
           unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
+          unsubs.push(S.onSnapshot(ftCol, s6 => { FT = s6.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
           let seedFatto = false;
           unsubs.push(S.onSnapshot(persCol, s5 => {
