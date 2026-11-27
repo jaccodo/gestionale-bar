@@ -1272,7 +1272,7 @@ function openFt(id){
   $('ftTitle').textContent = f.fornitore;
   const r = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
   $('ftDl').innerHTML = r('Documento', esc(f.tipo || 'Fattura') + ' n. ' + esc(f.numero)) + r('Data emissione', fLong.format(parse(f.data))) + (f.piva ? r('Partita IVA', esc(f.piva)) : '')
-    + r('Imponibile', eur(f.imponibile)) + r('IVA', eur(f.iva)) + r('Totale', `<span style="font-size:1.1rem">${eur(f.totale)}</span>`) + (f.sdi ? r('Identificativo SDI', esc(f.sdi)) : '') + r('Arrivata da', ({ csv: 'file CSV', pdf: 'file PDF', xml: 'fattura elettronica XML', manuale: 'inserita a mano' })[f.fonte] || esc(f.fonte || '–'));
+    + r('Imponibile', eur(f.imponibile)) + r('IVA', eur(f.iva)) + r('Totale', `<span style="font-size:1.1rem">${eur(f.totale)}</span>`) + (f.sdi ? r('Identificativo SDI', esc(f.sdi)) : '') + r('Arrivata da', ({ csv: 'file CSV', pdf: 'file PDF', xml: 'fattura elettronica XML', manuale: 'inserita a mano', cassanova: 'Cassa in Cloud (automatico)' })[f.fonte] || esc(f.fonte || '–'));
   $('dlgFt').showModal();
 }
 $('ftClose').onclick = () => $('dlgFt').close();
