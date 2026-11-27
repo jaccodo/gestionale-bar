@@ -80,6 +80,9 @@ main .wrap{padding-block:14px 60px}
 .icon-btn:disabled{opacity:.35;cursor:default}
 .icon-btn:focus-visible,.txt-btn:focus-visible{outline:2px solid var(--accent)}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+/* Pallino dell'attività 2: accanto a Incasso2, spese e stipendi 2, sempre (anche sul telefono). */
+.p2{white-space:nowrap}
+.p2::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--i2);margin-right:5px;vertical-align:1px}
 .hint{font-size:.75rem;color:var(--muted);margin:8px 2px 0}
 
 /* tabella giorni, come un foglio Excel */
@@ -380,7 +383,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
       <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
-      <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button">Spese</button>
+      <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button"><span class="p2">Spese</span></button>
       <button class="tab" role="tab" id="tab-fatture" aria-selected="false" type="button">Fatture</button>
       <button class="tab" role="tab" id="tab-stipendi" aria-selected="false" type="button">Stipendi</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
@@ -421,7 +424,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       <div class="money"><span>€</span><input id="fI1" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
     </div>
     <div class="field">
-      <label for="fI2"><span class="dot" style="background:var(--i2)"></span>Incasso2 <span class="hint">· altra attività, totale giornata</span></label>
+      <label for="fI2"><span class="p2">Incasso2</span> <span class="hint">· altra attività, totale giornata</span></label>
       <div class="money"><span>€</span><input id="fI2" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
     </div>
     <div class="field sub-field">
@@ -447,7 +450,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
 <dialog id="dlgSp">
   <form class="sheet" id="spForm" method="dialog" novalidate>
     <h2 id="spTitle" style="text-transform:none">Nuova spesa</h2>
-    <p class="sub" style="margin:-8px 0 14px">Spesa dell'attività di Incasso2</p>
+    <p class="sub" style="margin:-8px 0 14px">Spesa dell'attività di <span class="p2">Incasso2</span></p>
     <div class="field">
       <label for="spData">Giorno</label>
       <input class="txt" id="spData" type="date">
@@ -852,7 +855,7 @@ function renderGiorni(){
   const splitTot = s.am + s.pm;
   $('v-giorni').innerHTML = list.length ? `<div class="sheetwrap"><table class="xl">
     <colgroup><col class="c-day"><col><col><col><col></colgroup>
-    <thead><tr><th>Giorno</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+    <thead><tr><th>Giorno</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot>
       <tr><td>Totale</td><td>${num(s.am)}</td><td>${num(s.i1)}</td><td>${num(s.i2)}</td><td>${num(s.tot)}</td></tr>
@@ -975,7 +978,7 @@ function tabellaPeriodi(){
     <h3 style="padding:14px 16px 0">${anni ? 'Tutti gli anni' : 'Tutti i mesi del ' + month.slice(0, 4)}</h3>
     <div class="hscroll" style="overflow-x:auto"><table class="xl mesi">
       <colgroup><col class="c-day"><col><col><col><col><col><col><col></colgroup>
-      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th><th>Fatture I1</th><th>Spese I2</th></tr></thead>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th><th>Fatture I1</th><th><span class="p2">Spese I2</span></th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td>
         <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
@@ -1089,7 +1092,7 @@ function renderRiepilogo(){
     <div class="card bcard">
       <h3>Ricavi · ${cosa}</h3>
       <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
-        <thead><tr><th></th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="dot" style="background:var(--i2)"></span>Incasso2</th><th>Totale</th></tr></thead>
+        <thead><tr><th></th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th></tr></thead>
         <tbody><tr><td>Ricavi</td><td>${v(b.i1)}</td><td>${v(b.i2)}</td><td class="tot">${v(b.tot)}</td></tr>
           <tr class="pct"><td>Quota</td><td>${pct(b.i1, b.tot)}</td><td>${pct(b.i2, b.tot)}</td><td>${b.tot ? '100%' : '–'}</td></tr></tbody>
       </table>
@@ -1099,7 +1102,7 @@ function renderRiepilogo(){
     <div class="card bcard">
       <h3>Costi commerciali · ${cosa}</h3>
       <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
-        <thead><tr><th>Voce</th><th>Spese</th><th>Fatture</th><th>Totale</th></tr></thead>
+        <thead><tr><th>Voce</th><th><span class="p2">Spese</span></th><th>Fatture</th><th>Totale</th></tr></thead>
         <tbody>${b.voci.map(x => `<tr><td>${x.nome}</td><td>${v(x.sp)}</td><td>${v(x.ft)}</td><td class="tot">${v(x.tot)}<small class="pc">${pct(x.tot, b.cc.tot)}</small></td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Totale</td><td>${v(b.cc.sp)}</td><td>${v(b.cc.ft)}</td><td>${v(b.cc.tot)}</td></tr></tfoot>
       </table>
@@ -1109,7 +1112,7 @@ function renderRiepilogo(){
     <div class="card bcard">
       <h3>Costi personale · ${cosa}</h3>
       <table class="xl bt"><colgroup><col class="c-v"><col><col><col></colgroup>
-        <thead><tr><th></th><th>Stip. 1</th><th>Stip. 2</th><th>Totale</th></tr></thead>
+        <thead><tr><th></th><th>Stip. 1</th><th><span class="p2">Stip. 2</span></th><th>Totale</th></tr></thead>
         <tbody>
           <tr class="sez"><td colspan="4">Dipendenti</td></tr>
           <tr><td>Stipendi</td><td>${v(b.pe.d1)}</td><td>${v(b.pe.d2)}</td><td class="tot">${v(b.pe.d1 + b.pe.d2)}</td></tr>
@@ -1117,7 +1120,7 @@ function renderRiepilogo(){
           <tr class="subt"><td>Totale</td><td>${v(b.pe.d1)}</td><td>${v(b.pe.d2)}</td><td>${v(b.pe.dTot)}</td></tr>
           <tr class="sez"><td colspan="4">Soci</td></tr>
           <tr class="subt"><td>Totale</td><td>${v(b.pe.s1)}</td><td>${v(b.pe.s2)}</td><td>${v(b.pe.sTot)}</td></tr>
-          ${b.pe.altri ? `<tr class="sez"><td colspan="4">Altri (scheda Spese)</td></tr><tr class="subt"><td>Stipendi</td><td class="vuoto">–</td><td>${v(b.pe.altri)}</td><td>${v(b.pe.altri)}</td></tr>` : ''}
+          ${b.pe.altri ? `<tr class="sez"><td colspan="4">Altri (scheda <span class="p2">Spese</span>)</td></tr><tr class="subt"><td>Stipendi</td><td class="vuoto">–</td><td>${v(b.pe.altri)}</td><td>${v(b.pe.altri)}</td></tr>` : ''}
         </tbody>
         <tfoot><tr><td>Totale</td><td>${v(b.pe.d1 + b.pe.s1)}</td><td>${v(b.pe.d2 + b.pe.s2 + b.pe.altri)}</td><td>${v(b.pe.tot)}</td></tr></tfoot>
       </table>
@@ -1131,7 +1134,7 @@ function renderRiepilogo(){
         <thead><tr><th></th><th>Ricavi</th><th>Costi</th><th>Utile</th></tr></thead>
         <tbody>
           <tr><td><span class="dot" style="background:var(--i1)"></span>Attività 1</td><td>${v(b.i1)}</td><td>${v(b.c1)}</td><td class="tot" ${segno(b.u1)}>${v(b.u1)}<small class="pc">${b.i1 ? pct(b.u1, b.i1) : ''}</small></td></tr>
-          <tr><td><span class="dot" style="background:var(--i2)"></span>Attività 2</td><td>${v(b.i2)}</td><td>${v(b.c2)}</td><td class="tot" ${segno(b.u2)}>${v(b.u2)}<small class="pc">${b.i2 ? pct(b.u2, b.i2) : ''}</small></td></tr>
+          <tr><td><span class="p2">Attività 2</span></td><td>${v(b.i2)}</td><td>${v(b.c2)}</td><td class="tot" ${segno(b.u2)}>${v(b.u2)}<small class="pc">${b.i2 ? pct(b.u2, b.i2) : ''}</small></td></tr>
         </tbody>
         <tfoot><tr><td>Totale</td><td>${v(b.tot)}</td><td>${v(b.costi)}</td><td ${segno(b.utile)}>${v(b.utile)}</td></tr></tfoot>
       </table>
@@ -1490,7 +1493,7 @@ function renderStipendi(){
     <button class="rs-btn" id="rsOpen" type="button"><span>Riepilogo stipendi <small>· solo dipendenti</small></span></button>
     ${rows ? `<div class="sheetwrap"><table class="xl">
       <colgroup><col class="c-day"><col><col><col><col></colgroup>
-      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>Stip. 1</th><th>Stip. 2</th><th>F24</th><th>Totale</th></tr></thead>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>Stip. 1</th><th><span class="p2">Stip. 2</span></th><th>F24</th><th>Totale</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>${anni ? 'Tot.' : A}</td><td>${num(T.t1)}</td><td>${num(T.t2)}</td><td>${num(T.f24)}</td><td>${num(T.tot)}</td></tr></tfoot>
     </table></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuno stipendio segnato.</p></div>'}
@@ -1513,14 +1516,14 @@ function renderStMese(){
     <p class="st-sub">Busta paga di ${fMonth.format(parse(m + '-01'))} · anno contabile ${A} (dic ${A - 1} – nov ${A})</p>
     <div class="strip4">
       <div><div class="l">Stipendio 1</div><div class="v">${eur(s.t1)}</div></div>
-      <div><div class="l">Stipendio 2</div><div class="v">${eur(s.t2)}</div></div>
+      <div><div class="l"><span class="p2">Stipendio 2</span></div><div class="v">${eur(s.t2)}</div></div>
       <div><div class="l">F24</div><div class="v">${eur(s.f24)}</div></div>
       <div class="big4"><div class="l">Totale 1 + 2 + F24</div><div class="v">${eur(s.totF)}</div></div>
     </div>
     <button class="rs-btn" id="rsOpen" type="button"><span>Riepilogo stipendi <small>· solo dipendenti</small></span></button>
     <div class="sheetwrap"><table class="xl st">
       <colgroup><col class="c-nome"><col style="width:22%"><col style="width:22%"><col style="width:22%"></colgroup>
-      <thead><tr><th>Persona</th><th>Stip. 1</th><th>Stip. 2</th><th>Totale</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Stip. 1</th><th><span class="p2">Stip. 2</span></th><th>Totale</th></tr></thead>
       <tbody>
         <tr class="sez"><td colspan="4">Dipendenti</td></tr>
         ${attivi.length ? attivi.map(p => riga(p)).join('') : '<tr class="sez"><td colspan="4" style="text-transform:none;letter-spacing:0;font-weight:500">Nessun dipendente: aggiungili con "Dipendenti" qui sotto.</td></tr>'}
@@ -1556,7 +1559,7 @@ function renderRS(){
       <div class="pn"><span class="dot" style="background:${colP(id)}"></span><span>${esc(nomeP(id))}</span></div>
       <div class="pv">${eur(t)}</div>
       <div class="pb"><i style="width:${p.s1 / maxP * 100}%;background:${colP(id)}"></i><i style="width:${p.s2 / maxP * 100}%;background:color-mix(in srgb,${colP(id)} 45%,transparent)"></i></div>
-      <div class="pd"><span>${pct(t, tot)} del totale</span><span>Stip. 1 ${fEur0.format(p.s1)} · Stip. 2 ${fEur0.format(p.s2)}</span><span>${p.mesi} ${p.mesi === 1 ? 'mese' : 'mesi'} · media ${fEur0.format(p.mesi ? t / p.mesi : 0)}/mese</span>${tp ? `<span>${A - 1}: ${fEur0.format(tp)} ${delta(t, tp)}</span>` : '<span>nuovo quest\'anno</span>'}</div>
+      <div class="pd"><span>${pct(t, tot)} del totale</span><span>Stip. 1 ${fEur0.format(p.s1)} · <span class="p2">Stip. 2 ${fEur0.format(p.s2)}</span></span><span>${p.mesi} ${p.mesi === 1 ? 'mese' : 'mesi'} · media ${fEur0.format(p.mesi ? t / p.mesi : 0)}/mese</span>${tp ? `<span>${A - 1}: ${fEur0.format(tp)} ${delta(t, tp)}</span>` : '<span>nuovo quest\'anno</span>'}</div>
     </div>`;
   }).join('');
   // Tabella persona × mese
@@ -1575,12 +1578,12 @@ function renderRS(){
         <div class="sub">${ids.length} ${ids.length === 1 ? 'dipendente' : 'dipendenti'} · ${mesiPagati.length} ${mesiPagati.length === 1 ? 'mese' : 'mesi'} con buste paga${totPrev ? ` · ${A - 1}: ${fEur0.format(totPrev)} ${delta(tot, totPrev)}` : ''}</div>
         <div class="kpis">
           <div><div class="l">Stipendio 1</div><div class="v num">${eur(s.d1)}</div><div class="sub" style="margin:0;font-size:.74rem">${pct(s.d1, tot)}</div></div>
-          <div><div class="l">Stipendio 2</div><div class="v num">${eur(s.d2)}</div><div class="sub" style="margin:0;font-size:.74rem">${pct(s.d2, tot)}</div></div>
+          <div><div class="l"><span class="p2">Stipendio 2</span></div><div class="v num">${eur(s.d2)}</div><div class="sub" style="margin:0;font-size:.74rem">${pct(s.d2, tot)}</div></div>
           <div><div class="l">Media al mese</div><div class="v num">${eur(mesiPagati.length ? tot / mesiPagati.length : 0)}</div><div class="sub" style="margin:0;font-size:.74rem">per tutti i dipendenti</div></div>
         </div>
       </div>
       <div class="card"><h3>Quanto ha preso ognuno</h3>${prows}
-        <div class="legend2"><span><i class="dot" style="background:var(--c1)"></i>barra piena = stipendio 1</span><span><i class="dot" style="background:color-mix(in srgb,var(--c1) 45%,transparent)"></i>barra chiara = stipendio 2</span></div>
+        <div class="legend2"><span><i class="dot" style="background:var(--c1)"></i>barra piena = stipendio 1</span><span><i class="dot" style="background:color-mix(in srgb,var(--c1) 45%,transparent)"></i>barra chiara = <span class="p2">stipendio 2</span></span></div>
       </div>
       <div class="card"><h3>Mese per mese</h3><div class="chart" id="rsChart"></div>
         <div class="legend2">${ids.map(id => `<span><i class="dot" style="background:${colP(id)}"></i>${esc(nomeP(id))}</span>`).join('')}</div>
@@ -1644,7 +1647,7 @@ function openSt(pid){
   $('stSub').textContent = `Busta paga di ${fMonth.format(parse(m + '-01'))}${SOCI.some(s => s.id === pid) ? ' · compenso socio' : ''}`;
   const campo = (id, lab, hint, v) => `<div class="field"><label for="${id}">${lab} <span class="hint">${hint}</span></label><div class="money"><span>€</span><input id="${id}" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${toField(v)}"></div></div>`;
   $('stFields').innerHTML = f24 ? campo('stF', 'F24', '· importo del mese', r.importo)
-    : campo('stA', 'Stipendio 1', '· attività di Incasso1', r.s1) + campo('stB', 'Stipendio 2', '· attività di Incasso2', r.s2);
+    : campo('stA', 'Stipendio 1', '· attività di Incasso1', r.s1) + campo('stB', '<span class="p2">Stipendio 2</span>', '· attività di Incasso2', r.s2);
   $('stErr').hidden = true; $('stDel').hidden = !stRec(m, pid); $('stSave').disabled = false;
   updStCalc();
   $('dlgSt').showModal();
@@ -1751,7 +1754,7 @@ function tabellaSpese(){
   if(!rows) return '';
   return `<div class="sheetwrap"><div class="hscroll" style="overflow-x:auto"><table class="xl" style="min-width:420px">
     <colgroup><col class="c-day"><col><col><col><col></colgroup>
-    <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th>Spese I2</th><th>Incasso2</th><th>I2 − spese</th><th>% spese</th></tr></thead>
+    <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="p2">Spese I2</span></th><th><span class="p2">Incasso2</span></th><th><span class="p2">I2 − spese</span></th><th>% spese</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td><td>${num(T)}</td><td>${num(I)}</td><td>${num(I - T)}</td><td>${I && T ? pct(T, I) : ''}</td></tr></tfoot>
   </table></div></div>
@@ -1782,13 +1785,13 @@ function renderSpese(){
     ${top}
     <div class="cards">
       <div class="card">
-        <h3>Spese Incasso2 ${NP}</h3>
+        <h3><span class="p2">Spese Incasso2</span> ${NP}</h3>
         <div class="big num">${eur(sm.totale)}</div>
         <div class="sub">${sm.list.length} ${sm.list.length === 1 ? 'spesa' : 'spese'}</div>
         <div class="kpis">
-          <div><div class="l">Incasso2</div><div class="v num">${eur(s.i2)}</div></div>
-          <div><div class="l">Incasso2 − spese</div><div class="v num" style="color:${netto < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(netto)}</div></div>
-          <div><div class="l">Spese su Incasso2</div><div class="v num">${s.i2 ? pct(sm.totale, s.i2) : '–'}</div></div>
+          <div><div class="l"><span class="p2">Incasso2</span></div><div class="v num">${eur(s.i2)}</div></div>
+          <div><div class="l"><span class="p2">Incasso2 − spese</span></div><div class="v num" style="color:${netto < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(netto)}</div></div>
+          <div><div class="l"><span class="p2">Spese su Incasso2</span></div><div class="v num">${s.i2 ? pct(sm.totale, s.i2) : '–'}</div></div>
         </div>
       </div>
       ${tipiUsati.length ? `<div class="card"><h3>Per tipologia</h3><div class="ptipi">${tipiUsati.map(t => `
