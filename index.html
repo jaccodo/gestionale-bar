@@ -1862,9 +1862,8 @@ function renderSpese(){
       <button class="btn ghost" id="spTipBtn" type="button">Tipologie</button>
     </div>`;
   if(calLevel === 'a'){ $('v-spese').innerHTML = top + tabellaSpese(); return; }
-  const P = periodo(), NP = nomePeriodo();
-  const sm = speseMese(P), s = stats(P);
-  const netto = s.i2 - sm.totale;
+  const P = periodo();
+  const sm = speseMese(P);
   const list = [...sm.list].sort((a, b) => b.data.localeCompare(a.data) || (b.creata || '').localeCompare(a.creata || ''));
   let prev = '';
   const rows = list.map(x => {
@@ -1881,14 +1880,8 @@ function renderSpese(){
     ${top}
     <div class="cards">
       <div class="card">
-        <h3><span class="p2">Spese Incasso2</span> ${NP}</h3>
+        <h3><span class="p2">Totale spese</span> · ${calLevel === 'm' ? fMonth.format(parse(month + '-01')) : month.slice(0, 4)}</h3>
         <div class="big num">${eur(sm.totale)}</div>
-        <div class="sub">${sm.list.length} ${sm.list.length === 1 ? 'spesa' : 'spese'}</div>
-        <div class="kpis">
-          <div><div class="l"><span class="p2">Incasso2</span></div><div class="v num">${eur(s.i2)}</div></div>
-          <div><div class="l"><span class="p2">Incasso2 − spese</span></div><div class="v num" style="color:${netto < 0 ? 'var(--bad)' : 'var(--good)'}">${eur(netto)}</div></div>
-          <div><div class="l"><span class="p2">Spese su Incasso2</span></div><div class="v num">${s.i2 ? pct(sm.totale, s.i2) : '–'}</div></div>
-        </div>
       </div>
       ${tipiUsati.length ? `<div class="card"><h3>Per tipologia</h3><div class="ptipi">${tipiUsati.map(t => `
         <div class="ptipo">${tipoTag(t)}<b class="num">${eur(sm.perTipo[t])}<small>${pct(sm.perTipo[t], sm.totale)}</small></b>
