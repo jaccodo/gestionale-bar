@@ -336,6 +336,20 @@ textarea.txt{width:100%;min-height:64px;resize:vertical;font:inherit;font-weight
 
 /* riepilogo */
 .cards{display:grid;gap:12px}
+/* Domande */
+#v-domande .dq-cat{margin-bottom:12px}
+.dq-list{list-style:none;margin:0;padding:0}
+.dq{border-top:1px solid var(--line)}
+.dq:first-child{border-top:0}
+.dq-q{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:none;border:0;padding:11px 0;color:var(--fg);font:inherit;font-size:.95rem;text-align:left;cursor:pointer}
+.dq-q::after{content:"›";color:var(--muted);font-size:1.2rem;transition:transform .15s}
+.dq.open .dq-q{font-weight:700}
+.dq.open .dq-q::after{transform:rotate(90deg)}
+.dq-a{background:var(--soft);border-radius:10px;padding:10px 12px;margin:0 0 12px;line-height:1.5;font-size:.92rem}
+.dq-a b{font-weight:800}
+.dq-ul{margin:8px 0 0;padding-left:18px}
+.dq-ul li{margin:2px 0}
+.dq-q .p2{white-space:normal}
 .cg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px}
 .cg2 .l{font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:2px}
 .cg2 > div + div{border-left:1px solid var(--line);padding-left:12px}
@@ -441,6 +455,7 @@ body.lim .solo-pieno{display:none!important}
       <button class="tab" role="tab" id="tab-fatture" aria-selected="false" type="button">Fatture</button>
       <button class="tab" role="tab" id="tab-stipendi" aria-selected="false" type="button">Stipendi</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
+      <button class="tab" role="tab" id="tab-domande" aria-selected="false" type="button">Domande</button>
     </nav>
   </div>
 </header>
@@ -468,6 +483,7 @@ body.lim .solo-pieno{display:none!important}
     <section id="v-stipendi" class="viz" hidden></section>
     <section id="v-rs" class="viz" hidden></section>
     <section id="v-riepilogo" hidden></section>
+    <section id="v-domande" hidden></section>
   </div>
 </main>
 
@@ -838,7 +854,7 @@ function speseMese(m){
 }
 let G = {};          // giorni: { 'AAAA-MM-GG': { incasso1, mattina, incasso2, note } }
 let me = null, backend = null;
-let view = ['giorni','calendario','spese','fatture','stipendi','riepilogo'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
+let view = ['giorni','calendario','spese','fatture','stipendi','riepilogo','domande'].includes(ssGet('bar-vista')) ? ssGet('bar-vista') : 'giorni';
 let month = ssGet('bar-mese') || TODAY().slice(0, 7);   // 'AAAA-MM'
 
 const monthDays = m => { const [y, mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({ length: n }, (_, i) => `${m}-${pad(i+1)}`); };
@@ -894,7 +910,7 @@ function render0(){
   $('mTitle').classList.toggle('zoom', lvl !== 'a');
   $('next').disabled = lvl === 'm' ? month >= cur : lvl === 'y' ? y >= +cur.slice(0, 4) : yearsStart + 11 >= +cur.slice(0, 4);
   $('oggi').hidden = lvl === 'm' && month === cur;
-  for(const v of ['giorni','calendario','spese','fatture','stipendi','riepilogo']){
+  for(const v of ['giorni','calendario','spese','fatture','stipendi','riepilogo','domande']){
     $('tab-' + v).setAttribute('aria-selected', view === v);
     $('v-' + v).hidden = view !== v || (v === 'stipendi' && rsOpen);
   }
@@ -905,6 +921,7 @@ function render0(){
   else if(view === 'spese') renderSpese();
   else if(view === 'fatture') renderFatture();
   else if(view === 'stipendi') rsOpen ? renderRS() : renderStipendi();
+  else if(view === 'domande') renderDomande();
   else renderRiepilogo();
 }
 
@@ -1297,6 +1314,187 @@ function renderRiepilogo(){
     ${tabellaMesi()}
   </div>`;
 }
+
+/* ---------- Domande: risposte calcolate dall'app sui dati veri (niente AI, niente costi) ----------
+   Il periodo è quello in alto (mese o anno: tocca il titolo per cambiarlo). Le domande col pallino
+   riguardano l'attività 2 e nella vista ridotta non compaiono. Le risposte si calcolano dentro render(),
+   quindi nella vista ridotta usano già i dati senza attività 2. */
+let dqAperta = null;
+const dqBox = document.createElement('div');
+dqBox.className = 'card cerca dq-cerca';
+dqBox.innerHTML = '<div class="cerca-in"><input id="dqTxt" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca una domanda: ghiaccio, giorno migliore, utile…" aria-label="Cerca una domanda"></div><p class="sub" id="dqConta" style="margin:8px 0 0"></p>';
+const dqTxt = dqBox.querySelector('#dqTxt'), dqConta = dqBox.querySelector('#dqConta');
+function filtraDomande(){
+  const q = piega(dqTxt.value).split(/\s+/).filter(Boolean);
+  let n = 0, tot = 0;
+  document.querySelectorAll('#v-domande .dq-cat').forEach(cat => {
+    let vis = 0;
+    cat.querySelectorAll('.dq').forEach(li => { const ok = q.every(p => li.dataset.t.includes(p)); li.hidden = !ok; tot++; if(ok){ vis++; n++; } });
+    cat.hidden = !vis;
+  });
+  dqConta.textContent = q.length ? `${n} ${n === 1 ? 'domanda trovata' : 'domande trovate'} su ${tot}` : `${tot} domande: tocca una domanda per la risposta`;
+}
+dqTxt.addEventListener('input', filtraDomande);
+
+const dqB = x => `<b class="num">${x}</b>`;
+const dqE = n => dqB(eur(n || 0));
+const dqVar = (a, b) => !b ? 'non ci sono dati per il confronto' : `${a >= b ? '▲ +' : '▼ −'}${fPct.format(Math.abs(a - b) / Math.abs(b) * 100)}% (${a - b >= 0 ? '+' : '−'}${eur(Math.abs(a - b))})`;
+const fWdL = new Intl.DateTimeFormat('it-IT', { weekday: 'long' });
+const dqGiorno = d => fLong.format(parse(d));
+const dqElenco = righe => righe.length ? `<ul class="dq-ul">${righe.map(r => `<li>${r}</li>`).join('')}</ul>` : '';
+
+function dqCtx(){
+  const P = calLevel === 'm' ? month : month.slice(0, 4), mese = P.length === 7;
+  const nomeDi = p => p.length === 7 ? fMonth.format(parse(p + '-01')) : p;
+  const prev = mese ? shiftMonth(P, -1) : String(+P - 1), ly = mese ? shiftMonth(P, -12) : String(+P - 1);
+  const anno = P.slice(0, 4), curM = TODAY().slice(0, 7);
+  const mesiAnno = Array.from({ length: 12 }, (_, i) => `${anno}-${pad(i + 1)}`).filter(m => m <= curM);
+  const mesiSt = p => p.length === 7 ? [p] : mesiAC(+p);
+  return { P, mese, nome: nomeDi(P), inP: mese ? 'a ' + nomeDi(P) : 'nel ' + P, prev, prevNome: nomeDi(prev), ly, lyNome: nomeDi(ly), anno, mesiAnno, mesiSt,
+    s: stats(P), sm: speseMese(P), fm: fattureMese(P), b: bil(P), st: stStats(mesiSt(P)) };
+}
+
+function domande(){
+  const L = [];
+  const add = (cat, q, fn, a2 = false) => L.push({ id: cat + '|' + q, cat, q, fn, a2 });
+  const giorniInc = c => c.s.days.filter(d => hasInc(G[d]));
+  const perGiornoSett = c => { const w = {}; for(const d of giorniInc(c)){ const k = parse(d).getDay(), x = w[k] ||= { t: 0, n: 0 }; x.t += tot(G[d]); x.n++; } return Object.entries(w).map(([k, x]) => ({ k: +k, m: x.t / x.n, n: x.n })); };
+  const nomeWd = k => fWdL.format(new Date(2024, 0, 7 + k));
+  const mesiCon = (c, f) => c.mesiAnno.map(m => ({ m, v: f(m) })).filter(x => x.v);
+
+  /* ---- Incassi ---- */
+  const I = 'Incassi';
+  add(I, 'Quanto abbiamo incassato in totale?', c => `${c.inP} abbiamo incassato ${dqE(c.s.tot)} in ${c.s.incDays} giorni.` + (LIM ? '' : ` Incasso1 ${dqE(c.s.i1)} (${pct(c.s.i1, c.s.tot)}), Incasso2 ${dqE(c.s.i2)} (${pct(c.s.i2, c.s.tot)}).`));
+  add(I, 'Quanto ha fatto Incasso1?', c => `Incasso1 ${c.inP}: ${dqE(c.s.i1)}` + (LIM ? '.' : `, cioè il ${pct(c.s.i1, c.s.tot)} del totale.`));
+  add(I, 'Quanto ha fatto Incasso2?', c => `Incasso2 ${c.inP}: ${dqE(c.s.i2)}, cioè il ${pct(c.s.i2, c.s.tot)} del totale.`, true);
+  add(I, 'Quanto è Incasso1 senza IVA?', c => `Incasso1 ${c.inP} senza IVA (${fPct.format(IVA_INC)}%): ${dqE(c.b.i1n)}. IVA compresa negli incassi: ${dqE(c.b.ivaInc)}.`);
+  add(I, 'Quanta IVA c\'è dentro gli incassi?', c => `Su Incasso1 ${c.inP} l'IVA al ${fPct.format(IVA_INC)}% vale ${dqE(c.b.ivaInc)}.`);
+  add(I, 'Qual è la media d\'incasso per giorno aperto?', c => `In media ${dqE(c.s.media)} al giorno, su ${c.s.incDays} giorni con incassi ${c.inP}.`);
+  add(I, 'Quanti giorni abbiamo lavorato?', c => `${c.inP} ci sono ${dqB(c.s.incDays)} giorni con incassi segnati.`);
+  add(I, 'Quanti giorni siamo stati chiusi?', c => { const oggi = TODAY(), dd = periodDays(c.P).filter(d => d <= oggi && !hasInc(G[d])); return `${c.inP} ci sono ${dqB(dd.length)} giorni senza incassi.` + (dd.length && dd.length <= 20 ? dqElenco(dd.map(d => dqGiorno(d) + ((G[d]?.note || '').trim() ? ' · ' + esc(G[d].note.trim()) : ''))) : ''); });
+  add(I, 'Qual è stato il giorno migliore?', c => c.s.best ? `Il giorno migliore ${c.inP} è ${dqB(dqGiorno(c.s.best.d))} con ${dqE(c.s.best.t)}.` : 'Nessun incasso nel periodo.');
+  add(I, 'Qual è stato il giorno peggiore?', c => c.s.worst ? `Il giorno più basso ${c.inP} è ${dqB(dqGiorno(c.s.worst.d))} con ${dqE(c.s.worst.t)}.` : 'Nessun incasso nel periodo.');
+  add(I, 'Quali sono i 5 giorni migliori?', c => dqElenco(giorniInc(c).sort((a, b) => tot(G[b]) - tot(G[a])).slice(0, 5).map(d => `${dqGiorno(d)} · ${dqE(tot(G[d]))}`)) || 'Nessun incasso nel periodo.');
+  add(I, 'Quali sono i 5 giorni peggiori?', c => dqElenco(giorniInc(c).sort((a, b) => tot(G[a]) - tot(G[b])).slice(0, 5).map(d => `${dqGiorno(d)} · ${dqE(tot(G[d]))}`)) || 'Nessun incasso nel periodo.');
+  add(I, 'Qual è il giorno della settimana migliore?', c => { const w = perGiornoSett(c).sort((a, b) => b.m - a.m); return w.length ? `In media il giorno migliore è il ${dqB(nomeWd(w[0].k))} con ${dqE(w[0].m)}.` + dqElenco(w.map(x => `${nomeWd(x.k)}: ${eur(x.m)} di media (${x.n} giorni)`)) : 'Nessun incasso nel periodo.'; });
+  add(I, 'Qual è il giorno della settimana peggiore?', c => { const w = perGiornoSett(c).sort((a, b) => a.m - b.m); return w.length ? `In media il giorno più debole è il ${dqB(nomeWd(w[0].k))} con ${dqE(w[0].m)}.` : 'Nessun incasso nel periodo.'; });
+  add(I, 'Quanto incassiamo nel weekend rispetto ai feriali?', c => { const w = perGiornoSett(c); const med = f => { const x = w.filter(f); const n = x.reduce((a, y) => a + y.n, 0); return n ? x.reduce((a, y) => a + y.m * y.n, 0) / n : 0; }; const we = med(x => x.k === 0 || x.k === 6), fe = med(x => x.k > 0 && x.k < 6); return `Media del weekend ${dqE(we)}, media dei feriali ${dqE(fe)}: ${dqVar(we, fe)}.`; });
+  add(I, 'Quanto incassiamo in media nei giorni festivi?', c => { const dd = giorniInc(c).filter(d => festa(d)); return dd.length ? `Nei ${dd.length} festivi ${c.inP} la media è ${dqE(dd.reduce((a, d) => a + tot(G[d]), 0) / dd.length)} (media generale ${eur(c.s.media)}).` + dqElenco(dd.map(d => `${festa(d)} (${dqGiorno(d)}): ${eur(tot(G[d]))}`)) : `Nessun festivo con incassi ${c.inP}.`; });
+  add(I, 'In quanti giorni abbiamo superato i 2.000 €?', c => { const dd = giorniInc(c).filter(d => tot(G[d]) > 2000); return `${dqB(dd.length)} giorni sopra i 2.000 € ${c.inP}.` + (dd.length && dd.length <= 15 ? dqElenco(dd.map(d => `${dqGiorno(d)} · ${eur(tot(G[d]))}`)) : ''); });
+  add(I, 'In quanti giorni siamo rimasti sotto i 1.000 €?', c => { const dd = giorniInc(c).filter(d => tot(G[d]) < 1000); return `${dqB(dd.length)} giorni sotto i 1.000 € ${c.inP}.` + (dd.length && dd.length <= 15 ? dqElenco(dd.map(d => `${dqGiorno(d)} · ${eur(tot(G[d]))}`)) : ''); });
+  add(I, 'Abbiamo incassato più o meno del periodo prima?', c => { const p = stats(c.prev); return `${c.inP} ${dqE(c.s.tot)}, ${c.prevNome} ${eur(p.tot)}: ${dqVar(c.s.tot, p.tot)}.`; });
+  add(I, 'Abbiamo incassato più o meno dell\'anno scorso?', c => { const p = stats(c.ly); return `${c.nome}: ${dqE(c.s.tot)}; ${c.lyNome}: ${eur(p.tot)}. ${dqVar(c.s.tot, p.tot)}.`; });
+  add(I, 'Qual è il mese migliore dell\'anno?', c => { const m = mesiCon(c, m => stats(m).tot).sort((a, b) => b.v - a.v); return m.length ? `Nel ${c.anno} il mese migliore è ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessun incasso nell\'anno.'; });
+  add(I, 'Qual è il mese peggiore dell\'anno?', c => { const m = mesiCon(c, m => stats(m).tot).sort((a, b) => a.v - b.v); return m.length ? `Nel ${c.anno} il mese più basso è ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessun incasso nell\'anno.'; });
+  add(I, 'Quanto incassiamo in media al mese?', c => { const m = mesiCon(c, m => stats(m).tot); return m.length ? `Nel ${c.anno} la media è ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese (${m.length} mesi).` : 'Nessun incasso nell\'anno.'; });
+  add(I, 'Com\'è andato ogni mese dell\'anno?', c => dqElenco(mesiCon(c, m => stats(m).tot).map(x => `${cap(fMonth.format(parse(x.m + '-01')))}: ${eur(x.v)}`)) || 'Nessun incasso nell\'anno.');
+  add(I, 'Se continuiamo così, quanto faremo a fine periodo?', c => { const oggi = TODAY(), dd = periodDays(c.P), passati = dd.filter(d => d <= oggi).length, restano = dd.length - passati; if(!restano) return `Il periodo è finito: totale ${dqE(c.s.tot)}.`; const media = passati ? c.s.tot / passati : 0; return `Con la media di ${eur(media)} per giorno di calendario, a fine periodo si arriva a circa ${dqE(c.s.tot + media * restano)} (mancano ${restano} giorni).`; });
+  add(I, 'Qual è il giorno migliore di Incasso1?', c => { const dd = giorniInc(c).filter(d => G[d].incasso1 != null).sort((a, b) => G[b].incasso1 - G[a].incasso1); return dd.length ? `${dqB(dqGiorno(dd[0]))} con ${dqE(G[dd[0]].incasso1)} di Incasso1.` : 'Nessun dato.'; });
+  add(I, 'Qual è il giorno migliore di Incasso2?', c => { const dd = giorniInc(c).filter(d => G[d].incasso2 != null).sort((a, b) => G[b].incasso2 - G[a].incasso2); return dd.length ? `${dqB(dqGiorno(dd[0]))} con ${dqE(G[dd[0]].incasso2)} di Incasso2.` : 'Nessun dato.'; }, true);
+  add(I, 'Quanto incassiamo di mattina e di pomeriggio?', c => c.s.splitDays ? `Mattina ${dqE(c.s.am)} (${pct(c.s.am, c.s.am + c.s.pm)}), pomeriggio ${dqE(c.s.pm)} (${pct(c.s.pm, c.s.am + c.s.pm)}), su ${c.s.splitDays} giorni con il parziale.` : 'Nessun parziale mattina segnato.', true);
+  add(I, 'Quanto fa la mattina in media?', c => c.s.splitDays ? `In media la mattina fa ${dqE(c.s.am / c.s.splitDays)} al giorno.` : 'Nessun parziale mattina segnato.', true);
+  add(I, 'Quanto fa il pomeriggio in media?', c => c.s.splitDays ? `In media il pomeriggio fa ${dqE(c.s.pm / c.s.splitDays)} al giorno.` : 'Nessun parziale mattina segnato.', true);
+  add(I, 'Quale mattina è andata meglio?', c => { const dd = giorniInc(c).filter(d => G[d].mattina != null).sort((a, b) => G[b].mattina - G[a].mattina); return dd.length ? `${dqB(dqGiorno(dd[0]))} con ${dqE(G[dd[0]].mattina)} di mattina.` : 'Nessun parziale mattina segnato.'; }, true);
+  add(I, 'Quali giorni hanno una nota?', c => { const dd = c.s.days.filter(d => (G[d].note || '').trim()); return dd.length ? dqElenco(dd.map(d => `${dqGiorno(d)}: ${esc(G[d].note.trim())}`)) : `Nessuna nota ${c.inP}.`; });
+
+  /* ---- Spese (attività 2) ---- */
+  const S = 'Spese';
+  add(S, 'Quanto abbiamo speso in totale?', c => `${c.inP} le spese sono ${dqE(c.sm.totale)} (${c.sm.list.length} voci, stipendi 2 automatici compresi).`, true);
+  for(const t of TIPI_ID) add(S, `Quanto abbiamo speso di ${tipoNome(t)}?`, c => { const v = c.sm.perTipo[t] || 0, n = c.sm.list.filter(x => x.tipo === t).length; return `${tipoNome(t)} ${c.inP}: ${dqE(v)} in ${n} ${n === 1 ? 'spesa' : 'spese'} (${pct(v, c.sm.totale)} delle spese).`; }, true);
+  add(S, 'Su quale tipologia spendiamo di più?', c => { const t = Object.entries(c.sm.perTipo).sort((a, b) => b[1] - a[1]); return t.length ? `${dqB(tipoNome(t[0][0]))}: ${dqE(t[0][1])}.` + dqElenco(t.map(([k, v]) => `${tipoNome(k)}: ${eur(v)} (${pct(v, c.sm.totale)})`)) : 'Nessuna spesa.'; }, true);
+  add(S, 'Qual è la spesa singola più alta?', c => { const x = c.sm.list.filter(x => !x.auto).sort((a, b) => b.importo - a.importo)[0]; return x ? `${dqB(esc(x.nome))} del ${dqGiorno(x.data)}: ${dqE(x.importo)} (${tipoNome(x.tipo)}).` : 'Nessuna spesa.'; }, true);
+  add(S, 'Quali sono le 10 spese più alte?', c => dqElenco(c.sm.list.filter(x => !x.auto).sort((a, b) => b.importo - a.importo).slice(0, 10).map(x => `${esc(x.nome)} · ${dqGiorno(x.data)} · ${eur(x.importo)}`)) || 'Nessuna spesa.', true);
+  add(S, 'Quante spese abbiamo segnato?', c => `${dqB(c.sm.list.filter(x => !x.auto).length)} spese segnate a mano ${c.inP}.`, true);
+  add(S, 'Quanto spendiamo in media al giorno?', c => { const n = c.b.giorni.n || 1; return `${dqE(c.sm.totale / n)} al giorno (${c.b.giorni.n} giorni di calendario con dati).`; }, true);
+  add(S, 'Quanto pesano le spese su Incasso2?', c => `Le spese sono il ${dqB(pct(c.sm.totale, c.s.i2))} di Incasso2 (${eur(c.sm.totale)} su ${eur(c.s.i2)}).`, true);
+  add(S, 'Quanto resta di Incasso2 tolte le spese?', c => `Incasso2 − spese ${c.inP}: ${dqE(c.s.i2 - c.sm.totale)}.`, true);
+  add(S, 'Abbiamo speso più o meno del periodo prima?', c => { const p = speseMese(c.prev).totale; return `${c.inP} ${dqE(c.sm.totale)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.sm.totale, p)}.`; }, true);
+  add(S, 'Abbiamo speso più o meno dell\'anno scorso?', c => { const p = speseMese(c.ly).totale; return `${c.nome}: ${dqE(c.sm.totale)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.sm.totale, p)}.`; }, true);
+  add(S, 'In quale mese abbiamo speso di più?', c => { const m = mesiCon(c, m => speseMese(m).totale).sort((a, b) => b.v - a.v); return m.length ? `Nel ${c.anno}: ${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` : 'Nessuna spesa.'; }, true);
+  add(S, 'Cosa compriamo più spesso?', c => { const k = {}; c.sm.list.filter(x => !x.auto).forEach(x => { const n = (x.nome || '').trim().toLowerCase(); const y = k[n] ||= { n: 0, t: 0 }; y.n++; y.t += x.importo; }); const r = Object.entries(k).sort((a, b) => b[1].n - a[1].n).slice(0, 10); return r.length ? dqElenco(r.map(([n, y]) => `${esc(n)}: ${y.n} volte, ${eur(y.t)}`)) : 'Nessuna spesa.'; }, true);
+  add(S, 'Quanto spendiamo di pane?', c => { const x = c.sm.list.filter(x => /pane/i.test(x.nome || '')); const t = x.reduce((a, y) => a + y.importo, 0); return `Pane ${c.inP}: ${dqE(t)} in ${x.length} spese` + (x.length ? `, ${eur(t / x.length)} di media a volta.` : '.'); }, true);
+  add(S, 'Quali spese sono da mettere o rimettere?', () => { const x = SP.filter(s => (s.rimettere || '').trim()).sort((a, b) => b.data.localeCompare(a.data)); return x.length ? `${x.length} spese con una nota, ${dqE(x.reduce((a, s) => a + s.importo, 0))} in tutto (tutti i mesi).` + dqElenco(x.slice(0, 30).map(s => `${dqGiorno(s.data)} · ${esc(s.nome)} ${eur(s.importo)} → <b>${esc(s.rimettere)}</b>`)) : 'Nessuna spesa da mettere o rimettere.'; }, true);
+  add(S, 'Quanto ci costano gli sponsor?', c => `Sponsor ${c.inP}: ${dqE(c.sm.perTipo.i || 0)}.`, true);
+
+  /* ---- Fatture (attività 1) ---- */
+  const F = 'Fatture';
+  add(F, 'Quanto abbiamo speso in fatture?', c => `${c.inP} le fatture sono ${dqE(c.fm.tot)} IVA compresa (${c.fm.list.length} documenti): imponibile ${eur(c.fm.imp)}, IVA ${eur(c.fm.iva)}.`);
+  add(F, 'Quanta IVA abbiamo pagato sulle fatture?', c => `IVA sulle fatture ${c.inP}: ${dqE(c.fm.iva)}.`);
+  add(F, 'Quante fatture abbiamo ricevuto?', c => { const nc = c.fm.list.filter(f => /credito/i.test(f.tipo)).length; return `${dqB(c.fm.list.length)} documenti ${c.inP}` + (nc ? `, di cui ${nc} note di credito.` : '.'); });
+  add(F, 'Qual è il fornitore principale?', c => { const f = Object.values(c.fm.perF).sort((a, b) => b.tot - a.tot)[0]; return f ? `${dqB(esc(f.nome))}: ${dqE(f.tot)} in ${f.n} fatture (${pct(f.tot, c.fm.tot)}).` : 'Nessuna fattura.'; });
+  add(F, 'Quali sono i 10 fornitori principali?', c => dqElenco(Object.values(c.fm.perF).sort((a, b) => b.tot - a.tot).slice(0, 10).map(f => `${esc(f.nome)}: ${eur(f.tot)} (${f.n})`)) || 'Nessuna fattura.');
+  add(F, 'Quanti fornitori diversi abbiamo?', c => `${dqB(Object.keys(c.fm.perF).length)} fornitori ${c.inP}.`);
+  add(F, 'Qual è la fattura più alta?', c => { const f = [...c.fm.list].sort((a, b) => b.totale - a.totale)[0]; return f ? `${dqB(esc(f.fornitore))} n. ${esc(f.numero)} del ${dqGiorno(f.data)}: ${dqE(f.totale)}.` : 'Nessuna fattura.'; });
+  for(const k of CAT_FT) add(F, `Quanto abbiamo speso di ${k}?`, c => { const x = c.fm.perC[k]; return x ? `${k} ${c.inP}: ${dqE(x.tot)} in ${x.n} fatture (${pct(x.tot, c.fm.tot)} delle fatture).` : `Nessuna fattura di ${k} ${c.inP}.`; });
+  add(F, 'Su quale categoria spendiamo di più?', c => { const r = Object.values(c.fm.perC).sort((a, b) => b.tot - a.tot); return r.length ? `${dqB(r[0].nome)}: ${dqE(r[0].tot)}.` + dqElenco(r.map(x => `${x.nome}: ${eur(x.tot)} (${pct(x.tot, c.fm.tot)})`)) : 'Nessuna fattura.'; });
+  add(F, 'Quanto pesano le fatture su Incasso1?', c => `Le fatture sono il ${dqB(pct(c.fm.tot, c.s.i1))} di Incasso1 (${eur(c.fm.tot)} su ${eur(c.s.i1)}).`);
+  add(F, 'Quanto resta di Incasso1 tolte le fatture?', c => `Incasso1 − fatture ${c.inP}: ${dqE(c.s.i1 - c.fm.tot)}.`);
+  add(F, 'Quanto pesa l\'affitto sugli incassi?', c => { const a = c.fm.perC.Affitto?.tot || 0; return `Affitto ${c.inP}: ${dqE(a)}, cioè il ${pct(a, c.s.tot)} degli incassi.`; });
+  add(F, 'Abbiamo speso in fatture più o meno del periodo prima?', c => { const p = fattureMese(c.prev).tot; return `${c.inP} ${dqE(c.fm.tot)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.fm.tot, p)}.`; });
+  add(F, 'Abbiamo speso in fatture più o meno dell\'anno scorso?', c => { const p = fattureMese(c.ly).tot; return `${c.nome}: ${dqE(c.fm.tot)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.fm.tot, p)}.`; });
+  add(F, 'Quante note di credito abbiamo ricevuto?', c => { const x = c.fm.list.filter(f => /credito/i.test(f.tipo)); return `${dqB(x.length)} note di credito ${c.inP}, ${dqE(x.reduce((a, f) => a + f.totale, 0))}.`; });
+  add(F, 'Quanto spendiamo di merce in media al mese?', c => { const m = mesiCon(c, m => fattureMese(m).perC.Merci?.tot || 0); return m.length ? `Nel ${c.anno} ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese di merci.` : 'Nessuna fattura di merci.'; });
+  add(F, 'Quanto spendiamo di luce in media al mese?', c => { const m = mesiCon(c, m => fattureMese(m).perC['Energia elettrica']?.tot || 0); return m.length ? `Nel ${c.anno} ${dqE(m.reduce((a, x) => a + x.v, 0) / m.length)} al mese di energia elettrica.` : 'Nessuna fattura di luce.'; });
+
+  /* ---- Personale ---- */
+  const P = 'Personale';
+  const stNome = c => c.mese ? 'nella busta di ' + c.nome : `nell'anno contabile ${c.P} (dic ${+c.P - 1} – nov ${c.P})`;
+  add(P, 'Quanto costa il personale in totale?', c => `${cap(stNome(c))}: ${dqE(c.b.pe.tot)} (dipendenti ${eur(c.b.pe.dTot)}, soci ${eur(c.b.pe.sTot)}${c.b.pe.altri ? `, altri ${eur(c.b.pe.altri)}` : ''}).`);
+  add(P, 'Quanto costano i dipendenti?', c => `Dipendenti ${stNome(c)}: ${dqE(c.st.d1 + c.st.d2 + c.st.f24)}` + (LIM ? ` (stipendi ${eur(c.st.d1)}, F24 ${eur(c.st.f24)}).` : ` (stipendio 1 ${eur(c.st.d1)}, stipendio 2 ${eur(c.st.d2)}, F24 ${eur(c.st.f24)}).`));
+  add(P, 'Quanto prendono i soci?', c => `Soci ${stNome(c)}: ${dqE(c.st.s1 + c.st.s2)}` + (LIM ? '.' : ` (stipendio 1 ${eur(c.st.s1)}, stipendio 2 ${eur(c.st.s2)}).`));
+  add(P, 'Quanto abbiamo pagato di stipendi 1?', c => `Stipendi 1 ${stNome(c)}: ${dqE(c.st.t1)} (dipendenti ${eur(c.st.d1)}, soci ${eur(c.st.s1)}).`);
+  add(P, 'Quanto abbiamo pagato di stipendi 2?', c => `Stipendi 2 ${stNome(c)}: ${dqE(c.st.t2)} (dipendenti ${eur(c.st.d2)}, soci ${eur(c.st.s2)}).`, true);
+  add(P, 'Quanto abbiamo pagato di F24?', c => `F24 ${stNome(c)}: ${dqE(c.st.f24)}.` + (c.st.f24 ? '' : ' (Nessun F24 segnato.)'));
+  add(P, 'Chi è il dipendente che costa di più?', c => { const r = Object.entries(c.st.perP).map(([id, p]) => ({ id, t: (p.s1 || 0) + (p.s2 || 0) })).sort((a, b) => b.t - a.t); return r.length ? `${dqB(esc(nomeP(r[0].id)))}: ${dqE(r[0].t)} ${stNome(c)}.` + dqElenco(r.map(x => `${esc(nomeP(x.id))}: ${eur(x.t)}`)) : 'Nessuna busta paga.'; });
+  add(P, 'Quanto prende in media un dipendente al mese?', c => { const r = Object.values(c.st.perP); const t = r.reduce((a, p) => a + (p.s1 || 0) + (p.s2 || 0), 0), m = r.reduce((a, p) => a + p.mesi, 0); return m ? `${dqE(t / m)} al mese a testa (stipendi, senza F24).` : 'Nessuna busta paga.'; });
+  add(P, 'Quanto pesa il personale sugli incassi?', c => `Il personale è il ${dqB(pct(c.b.pe.tot, c.s.tot))} degli incassi ${c.inP}.`);
+  add(P, 'Il personale costa più o meno dell\'anno scorso?', c => { const p = bil(c.ly).pe.tot; return `${c.nome}: ${dqE(c.b.pe.tot)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.b.pe.tot, p)}.`; });
+  for(const p of PERS) add(P, `Quanto ha preso ${p.nome}?`, c => { const x = c.st.perP[p.id]; return x ? `${esc(p.nome)} ${stNome(c)}: ${dqE((x.s1 || 0) + (x.s2 || 0))}` + (LIM ? '.' : ` (stipendio 1 ${eur(x.s1)}, stipendio 2 ${eur(x.s2)}), ${x.mesi} ${x.mesi === 1 ? 'mese' : 'mesi'}.`) : `Nessuna busta paga per ${esc(p.nome)} ${stNome(c)}.`; });
+
+  /* ---- Bilancio ---- */
+  const U = 'Bilancio e utile';
+  add(U, 'Qual è l\'utile?', c => `Utile ${c.inP}: ${dqE(c.b.utile)}` + (LIM ? '.' : ` (attività 1 ${eur(c.b.u1)} netto IVA, attività 2 ${eur(c.b.u2)}).`));
+  add(U, 'Qual è l\'utile dell\'attività 1?', c => `Attività 1 ${c.inP}, al netto dell'IVA: ${dqE(c.b.u1)} (${pct(c.b.u1, c.b.i1n)} dei ricavi senza IVA).`);
+  add(U, 'Qual è l\'utile dell\'attività 2?', c => `Attività 2 ${c.inP}: ${dqE(c.b.u2)} (${pct(c.b.u2, c.b.i2)} di Incasso2).`, true);
+  add(U, 'Che margine facciamo sugli incassi?', c => `L'utile è il ${dqB(pct(c.b.utile, c.b.i1n + c.b.i2))} dei ricavi (Incasso1 senza IVA${LIM ? '' : ' + Incasso2'}).`);
+  add(U, 'Quanto costa il bar al giorno?', c => `${dqE(c.b.costiLordi / (c.b.giorni.n || 1))} al giorno ${c.inP} (${eur(c.b.costiLordi)} ÷ ${c.b.giorni.n} giorni).`);
+  add(U, 'Quanto ci costano i costi fissi al giorno?', c => `${dqE(c.b.fissi / (c.b.giorni.n || 1))} al giorno di costi fissi ${c.inP} (${eur(c.b.fissi)}).`);
+  add(U, 'Quanto dobbiamo incassare al giorno per coprire i costi?', c => { const n = c.b.giorni.n || 1, serve = c.b.costiLordi / n, fatto = c.s.tot / n; return `Per coprire tutti i costi servono ${dqE(serve)} al giorno; ${c.inP} abbiamo fatto ${eur(fatto)} al giorno (${fatto >= serve ? 'coperti' : 'non coperti'}).`; });
+  add(U, 'Quanto dobbiamo incassare al giorno per coprire i costi fissi?', c => { const n = c.b.giorni.n || 1; return `${dqE(c.b.fissi / n)} al giorno solo per i costi fissi (affitto, personale, utenze…).`; });
+  add(U, 'Quanti giorni di incasso servono per pagare l\'affitto?', c => { const a = c.fm.perC.Affitto?.tot || 0; return c.s.media ? `L'affitto ${c.inP} (${eur(a)}) vale ${dqB(fPct.format(a / c.s.media))} giorni di incasso medio.` : 'Nessun incasso nel periodo.'; });
+  add(U, 'Quanti giorni di incasso servono per pagare il personale?', c => c.s.media ? `Il personale ${c.inP} (${eur(c.b.pe.tot)}) vale ${dqB(fPct.format(c.b.pe.tot / c.s.media))} giorni di incasso medio.` : 'Nessun incasso nel periodo.');
+  add(U, 'Qual è la voce di costo più pesante?', c => { const r = [...c.b.voci.map(v => [v.nome, v.tot]), ['Personale', c.b.pe.tot]].filter(x => x[1]).sort((a, b) => b[1] - a[1]); const t = r.reduce((a, x) => a + x[1], 0); return r.length ? `${dqB(r[0][0])}: ${dqE(r[0][1])}.` + dqElenco(r.map(x => `${x[0]}: ${eur(x[1])} (${pct(x[1], t)})`)) : 'Nessun costo.'; });
+  add(U, 'Quanto sono i costi commerciali?', c => `Costi commerciali ${c.inP}: ${dqE(c.b.cc.tot)}` + (LIM ? ` (fatture ${eur(c.b.cc.ft)}).` : ` (spese ${eur(c.b.cc.sp)}, fatture ${eur(c.b.cc.ft)}).`));
+  add(U, 'Quanto sono tutti i costi?', c => `Tutti i costi ${c.inP}: ${dqE(c.b.costiLordi)} (commerciali ${eur(c.b.cc.tot)}, personale ${eur(c.b.pe.tot)}); di cui fissi ${eur(c.b.fissi)}.`);
+  add(U, 'L\'utile è migliorato rispetto al periodo prima?', c => { const p = bil(c.prev).utile; return `${c.inP} ${dqE(c.b.utile)}, ${c.prevNome} ${eur(p)}: ${dqVar(c.b.utile, p)}.`; });
+  add(U, 'L\'utile è migliorato rispetto all\'anno scorso?', c => { const p = bil(c.ly).utile; return `${c.nome}: ${dqE(c.b.utile)}; ${c.lyNome}: ${eur(p)}. ${dqVar(c.b.utile, p)}.`; });
+  add(U, 'Quanto guadagniamo per giorno aperto?', c => c.s.incDays ? `${dqE(c.b.utile / c.s.incDays)} di utile per ogni giorno con incassi (${c.s.incDays} giorni).` : 'Nessun incasso nel periodo.');
+  add(U, 'Qual è il mese con più utile nell\'anno?', c => { const m = mesiCon(c, m => bil(m).utile).sort((a, b) => b.v - a.v); return m.length ? `${dqB(fMonth.format(parse(m[0].m + '-01')))} con ${dqE(m[0].v)}.` + dqElenco(mesiCon(c, m => bil(m).utile).map(x => `${cap(fMonth.format(parse(x.m + '-01')))}: ${eur(x.v)}`)) : 'Nessun dato.'; });
+
+  return LIM ? L.filter(x => !x.a2) : L;
+}
+
+function renderDomande(){
+  const L = domande();
+  const cats = [...new Set(L.map(x => x.cat))];
+  const nome = calLevel === 'm' ? fMonth.format(parse(month + '-01')) : month.slice(0, 4);
+  let ctx = null;
+  const risposta = x => { try{ ctx ||= dqCtx(); return x.fn(ctx); }catch(e){ console.error(e); return 'Non riesco a calcolare questa risposta.'; } };
+  $('v-domande').innerHTML = `<div id="dqSlot"></div>
+    <p class="sub" style="margin:0 0 10px">Le risposte sono calcolate sui dati dell'app per <b>${nome}</b>. Tocca il titolo in alto per passare al mese o all'anno.</p>
+    ${cats.map(cat => `<div class="card dq-cat"><h3>${cat}</h3><ul class="dq-list">${L.filter(x => x.cat === cat).map(x => `
+      <li class="dq${dqAperta === x.id ? ' open' : ''}" data-t="${esc(piega(x.q + ' ' + cat))}">
+        <button type="button" class="dq-q" data-q="${esc(x.id)}" aria-expanded="${dqAperta === x.id}">${x.a2 ? `<span class="p2">${esc(x.q)}</span>` : esc(x.q)}</button>
+        ${dqAperta === x.id ? `<div class="dq-a">${risposta(x)}</div>` : ''}
+      </li>`).join('')}</ul></div>`).join('')}`;
+  $('dqSlot').replaceWith(dqBox);
+  filtraDomande();
+}
+$('v-domande').addEventListener('click', e => {
+  const b = e.target.closest('[data-q]'); if(!b) return;
+  dqAperta = dqAperta === b.dataset.q ? null : b.dataset.q;
+  render();
+});
 
 /* ---------- fatture (Incasso1) ---------- */
 // Elenco fornitori: i primi 12, oppure tutti dopo aver toccato "mostra tutti".
@@ -2179,6 +2377,7 @@ $('tab-spese').onclick = () => setView('spese');
 $('tab-fatture').onclick = () => setView('fatture');
 $('tab-stipendi').onclick = () => { rsOpen = false; setView('stipendi'); };
 $('tab-riepilogo').onclick = () => setView('riepilogo');
+$('tab-domande').onclick = () => setView('domande');
 
 // Tocco su giorno/mese/anno nel calendario; pizzico con due dita, Ctrl+rotella e scorrimento laterale in tutte le schede.
 (() => {
