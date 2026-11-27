@@ -80,6 +80,7 @@ main .wrap{padding-block:14px 60px}
 .icon-btn:disabled{opacity:.35;cursor:default}
 .icon-btn:focus-visible,.txt-btn:focus-visible{outline:2px solid var(--accent)}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+body.lim [data-solo-pieno]{display:none!important}
 /* Pallino dell'attività 2: accanto a Incasso2, spese e stipendi 2, sempre (anche sul telefono). */
 .p2{white-space:nowrap}
 .p2::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--i2);margin-right:5px;vertical-align:1px}
@@ -362,6 +363,11 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
 .gate p{color:var(--band-muted)}
 .gate .btn{background:var(--band-fg);color:var(--band);border-color:var(--band-fg)}
 .gate .err{color:#ff9d9d;margin-top:12px}
+.gate input{width:100%;margin:6px 0;padding:12px 14px;border-radius:12px;border:1px solid var(--band-muted);background:transparent;color:var(--band-fg);font:inherit;font-size:1rem}
+.gate .pw-row{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.gate .btn.ghost{background:transparent;color:var(--band-fg)}
+/* Vista ridotta: sparisce tutto ciò che riguarda l'attività 2 (pallino) e mattina/pomeriggio. */
+body.lim .solo-pieno{display:none!important}
 .toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.88rem;font-weight:600;z-index:40;max-width:calc(100% - 32px)}
 .offline{position:fixed;left:0;right:0;bottom:0;background:var(--warn-soft);color:var(--warn);text-align:center;font-size:.82rem;padding:6px;z-index:15}
 @media (max-width:420px){
@@ -383,7 +389,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-giorni" aria-selected="true" type="button">Giorni</button>
       <button class="tab" role="tab" id="tab-calendario" aria-selected="false" type="button">Calendario</button>
-      <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button"><span class="p2">Spese</span></button>
+      <button class="tab" role="tab" id="tab-spese" aria-selected="false" type="button" data-solo-pieno><span class="p2">Spese</span></button>
       <button class="tab" role="tab" id="tab-fatture" aria-selected="false" type="button">Fatture</button>
       <button class="tab" role="tab" id="tab-stipendi" aria-selected="false" type="button">Stipendi</button>
       <button class="tab" role="tab" id="tab-riepilogo" aria-selected="false" type="button">Riepilogo</button>
@@ -392,6 +398,7 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
 </header>
 <div class="menu" id="menu" hidden>
   <p id="m-email"></p>
+  <button class="btn ghost solo-pieno" id="pwCambia" type="button">Cambia password</button>
   <button class="btn ghost" id="logoutBtn" type="button">Esci</button>
 </div>
 
@@ -423,11 +430,11 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
       <label for="fI1"><span class="dot" style="background:var(--i1)"></span>Incasso1 <span class="hint">· fiscale, totale giornata</span></label>
       <div class="money"><span>€</span><input id="fI1" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
     </div>
-    <div class="field">
+    <div class="field solo-pieno">
       <label for="fI2"><span class="p2">Incasso2</span> <span class="hint">· altra attività, totale giornata</span></label>
       <div class="money"><span>€</span><input id="fI2" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
     </div>
-    <div class="field sub-field">
+    <div class="field sub-field solo-pieno">
       <label for="fAm"><span class="dot" style="background:var(--am)"></span>di cui mattina <span class="hint">· parziale dei due incassi insieme</span></label>
       <div class="money"><span>€</span><input id="fAm" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
     </div>
@@ -597,6 +604,14 @@ textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--a
     <p>L'account <b id="gate-email"></b> non è tra quelli dei soci. Entra con un altro account.</p>
     <button class="btn" id="switchBtn" type="button">Usa un altro account</button>
   </div>
+  <form id="gate-pw" hidden novalidate>
+    <h2>Gestionale Bar</h2>
+    <p id="pw-msg">Scrivi la password.</p>
+    <input type="password" id="pw1" autocomplete="current-password" aria-label="Password">
+    <input type="password" id="pw2" autocomplete="new-password" aria-label="Ripeti la password" hidden>
+    <div class="pw-row"><button class="btn ghost" id="pwAnnulla" type="button" hidden>Annulla</button><button class="btn" id="pwOk" type="submit">Entra</button></div>
+    <p class="err" id="pw-err" hidden></p>
+  </form>
   <div id="gate-error" hidden>
     <h2>Qualcosa non va</h2>
     <p id="gate-error-msg">Il gestionale non è raggiungibile.</p>
@@ -811,6 +826,14 @@ function stats(m){
 
 /* ---------- disegno ---------- */
 function render(){
+  if(!sbloccato) return;
+  if(!LIM) return render0();
+  const raw = [G, SP, ST];
+  maschera();
+  try{ render0(); } finally { [G, SP, ST] = raw; }
+  nascondi2();
+}
+function render0(){
   const [y, mo] = month.split('-').map(Number);
   const cur = TODAY().slice(0, 7), lvl = calLevel;
   ssSet('bar-zoom', JSON.stringify({ l: calLevel, ys: yearsStart }));
@@ -855,14 +878,14 @@ function renderGiorni(){
   const splitTot = s.am + s.pm;
   $('v-giorni').innerHTML = list.length ? `<div class="sheetwrap"><table class="xl">
     <colgroup><col class="c-day"><col><col><col><col></colgroup>
-    <thead><tr><th>Giorno</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th></tr></thead>
+    <thead><tr><th>Giorno</th><th class="solo-pieno"><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th class="solo-pieno">Totale</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot>
       <tr><td>Totale</td><td>${num(s.am)}</td><td>${num(s.i1)}</td><td>${num(s.i2)}</td><td>${num(s.tot)}</td></tr>
       <tr class="pct"><td></td><td>${s.splitDays ? pct(s.am, splitTot) : ''}</td><td>${pct(s.i1, s.tot)}</td><td>${pct(s.i2, s.tot)}</td><td>${s.incDays ? 'media ' + fNum0.format(s.media) : ''}</td></tr>
     </tfoot>
   </table></div>
-  <p class="hint">Importi in euro. Tocca una riga per segnare o correggere il giorno; ✎ = c'è una nota. La % della mattina è sul totale dei giorni con il parziale segnato.</p>`
+  <p class="hint">Importi in euro. Tocca una riga per segnare o correggere il giorno; ✎ = c'è una nota. <span class="solo-pieno">La % della mattina è sul totale dei giorni con il parziale segnato.</span></p>`
   : '<p class="muted">Nessun giorno da mostrare.</p>';
 }
 
@@ -893,7 +916,7 @@ function renderCalMonth(){
     </button>`;
   }
   $('v-calendario').innerHTML = `<div class="wk">${wk}</div><div class="mgrid">${cells}</div>
-    <p class="hint"><span class="dot" style="background:var(--i1)"></span> Incasso1 · <span class="dot" style="background:var(--i2)"></span> Incasso2 · ☀ mattina · <span class="dot" style="background:var(--am)"></span> nota · <span class="dot" style="background:var(--hol)"></span> festività. Tocca il mese in alto (o pizzica con due dita) per vedere l'anno.</p>`;
+    <p class="hint"><span class="dot" style="background:var(--i1)"></span> Incasso1 · <span class="solo-pieno"><span class="p2">Incasso2</span> · ☀ mattina · </span><span class="dot" style="background:var(--am)"></span> nota · <span class="dot" style="background:var(--hol)"></span> festività. Tocca il mese in alto (o pizzica con due dita) per vedere l'anno.</p>`;
 }
 function renderCalYear(){
   const y = +month.slice(0, 4), today = TODAY(), curM = today.slice(0, 7);
@@ -978,7 +1001,7 @@ function tabellaPeriodi(){
     <h3 style="padding:14px 16px 0">${anni ? 'Tutti gli anni' : 'Tutti i mesi del ' + month.slice(0, 4)}</h3>
     <div class="hscroll" style="overflow-x:auto"><table class="xl mesi">
       <colgroup><col class="c-day"><col><col><col><col><col><col><col></colgroup>
-      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th><span class="dot" style="background:var(--am)"></span>Mattina</th><th><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th><th>Fatture I1</th><th><span class="p2">Spese I2</span></th></tr></thead>
+      <thead><tr><th>${anni ? 'Anno' : 'Mese'}</th><th class="solo-pieno"><span class="dot" style="background:var(--am)"></span>Mattina</th><th class="solo-pieno"><span class="dot" style="background:var(--pm)"></span>Pomer.</th><th><span class="dot" style="background:var(--i1)"></span>Incasso1</th><th><span class="p2">Incasso2</span></th><th>Totale</th><th>Fatture I1</th><th><span class="p2">Spese I2</span></th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>${anni ? 'Tot.' : month.slice(0, 4)}</td>
         <td>${num(A.am)}<small class="pc">${sp ? pct(A.am, sp) : ''}</small></td>
@@ -989,7 +1012,7 @@ function tabellaPeriodi(){
         <td>${num(A.ft)}<small class="pc">${A.i1 ? 'netto I1 ' + fNum0.format(A.i1 - A.ft) : ''}</small></td>
         <td>${num(A.sp)}<small class="pc">${A.i2 ? 'netto I2 ' + fNum0.format(A.i2 - A.sp) : ''}</small></td></tr></tfoot>
     </table></div>
-    <p class="hint" style="padding:0 16px 14px">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprirlo; tocca il titolo in alto (o pizzica con due dita) per vedere gli anni'}. Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale. Fatture I1 = fatture ricevute (con IVA), con Incasso1 al netto; Spese I2 = spese della scheda Spese, con Incasso2 al netto.</p>
+    <p class="hint" style="padding:0 16px 14px">Tocca ${anni ? 'un anno per vederne i mesi' : 'un mese per aprirlo; tocca il titolo in alto (o pizzica con due dita) per vedere gli anni'}. <span class="solo-pieno">Mattina e pomeriggio in % sui giorni con il parziale segnato; Incasso1 e Incasso2 in % sul totale. </span>Fatture I1 = fatture ricevute (con IVA), con Incasso1 al netto<span class="solo-pieno">; Spese I2 = spese della scheda Spese, con Incasso2 al netto</span>.</p>
   </div>`;
 }
 const tabellaMesi = tabellaPeriodi;
@@ -1106,7 +1129,7 @@ function renderRiepilogo(){
         <tbody>${b.voci.map(x => `<tr><td>${x.nome}</td><td>${v(x.sp)}</td><td>${v(x.ft)}</td><td class="tot">${v(x.tot)}<small class="pc">${pct(x.tot, b.cc.tot)}</small></td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Totale</td><td>${v(b.cc.sp)}</td><td>${v(b.cc.ft)}</td><td>${v(b.cc.tot)}</td></tr></tfoot>
       </table>
-      <p class="sub" style="margin:8px 0 0">Spese = scheda Spese (Incasso2), fatture = scheda Fatture con IVA (Incasso1). Gli stipendi sono nei costi del personale.</p>
+      <p class="sub" style="margin:8px 0 0"><span class="solo-pieno">Spese = scheda Spese (Incasso2). </span>Fatture = scheda Fatture con IVA (Incasso1). Gli stipendi sono nei costi del personale.</p>
     </div>
 
     <div class="card bcard">
@@ -1138,12 +1161,12 @@ function renderRiepilogo(){
         </tbody>
         <tfoot><tr><td>Totale</td><td>${v(b.tot)}</td><td>${v(b.costi)}</td><td ${segno(b.utile)}>${v(b.utile)}</td></tr></tfoot>
       </table>
-      <p class="sub" style="margin:8px 0 0">Attività 1 = Incasso1 − fatture − stipendi 1 (dipendenti e soci) − F24. Attività 2 = Incasso2 − spese − stipendi 2 (dipendenti e soci). La percentuale è l’utile sui ricavi.</p>
+      <p class="sub" style="margin:8px 0 0">Attività 1 = Incasso1 − fatture − stipendi 1 (dipendenti e soci) − F24. <span class="solo-pieno">Attività 2 = Incasso2 − spese − stipendi 2 (dipendenti e soci). </span>La percentuale è l’utile sui ricavi.</p>
     </div>
 
     ${costoGiorno}
 
-    ${s.splitDays ? `<div class="card">
+    ${s.splitDays ? `<div class="card solo-pieno">
       <h3>Mattina e pomeriggio · ${calLevel === 'm' ? fMonth.format(parse(month + '-01')) : anno}</h3>
       <div class="bar" role="img" aria-label="Mattina ${pct(s.am, splitTot)}, pomeriggio ${pct(s.pm, splitTot)}">
         <i style="width:${splitTot ? s.am / splitTot * 100 : 0}%;background:var(--am)"></i><i style="width:${splitTot ? s.pm / splitTot * 100 : 0}%;background:var(--pm)"></i>
@@ -1518,7 +1541,7 @@ function renderStMese(){
       <div><div class="l">Stipendio 1</div><div class="v">${eur(s.t1)}</div></div>
       <div><div class="l"><span class="p2">Stipendio 2</span></div><div class="v">${eur(s.t2)}</div></div>
       <div><div class="l">F24</div><div class="v">${eur(s.f24)}</div></div>
-      <div class="big4"><div class="l">Totale 1 + 2 + F24</div><div class="v">${eur(s.totF)}</div></div>
+      <div class="big4"><div class="l">Totale con F24</div><div class="v">${eur(s.totF)}</div></div>
     </div>
     <button class="rs-btn" id="rsOpen" type="button"><span>Riepilogo stipendi <small>· solo dipendenti</small></span></button>
     <div class="sheetwrap"><table class="xl st">
@@ -1540,7 +1563,7 @@ function renderStMese(){
       </tfoot>
     </table></div>
     <div class="st-actions"><button class="btn ghost" id="prsOpen" type="button">Dipendenti</button></div>
-    <p class="hint">Tocca una riga per segnare stipendio 1 (attività di Incasso1) e stipendio 2 (attività di Incasso2). Gli stipendi 2 contano da soli tra le spese di Incasso2. Tocca il mese in alto (o pizzica) per vedere l'anno contabile.</p>`;
+    <p class="hint">Tocca una riga per segnare stipendio 1 (attività di Incasso1)<span class="solo-pieno"> e stipendio 2 (attività di Incasso2). Gli stipendi 2 contano da soli tra le spese di Incasso2</span>. Tocca il mese in alto (o pizzica) per vedere l'anno contabile.</p>`;
 }
 
 /* Riepilogo stipendi: solo dipendenti, anno contabile (dic–nov). */
@@ -1559,7 +1582,7 @@ function renderRS(){
       <div class="pn"><span class="dot" style="background:${colP(id)}"></span><span>${esc(nomeP(id))}</span></div>
       <div class="pv">${eur(t)}</div>
       <div class="pb"><i style="width:${p.s1 / maxP * 100}%;background:${colP(id)}"></i><i style="width:${p.s2 / maxP * 100}%;background:color-mix(in srgb,${colP(id)} 45%,transparent)"></i></div>
-      <div class="pd"><span>${pct(t, tot)} del totale</span><span>Stip. 1 ${fEur0.format(p.s1)} · <span class="p2">Stip. 2 ${fEur0.format(p.s2)}</span></span><span>${p.mesi} ${p.mesi === 1 ? 'mese' : 'mesi'} · media ${fEur0.format(p.mesi ? t / p.mesi : 0)}/mese</span>${tp ? `<span>${A - 1}: ${fEur0.format(tp)} ${delta(t, tp)}</span>` : '<span>nuovo quest\'anno</span>'}</div>
+      <div class="pd"><span>${pct(t, tot)} del totale</span><span>Stip. 1 ${fEur0.format(p.s1)}<span class="solo-pieno"> · <span class="p2">Stip. 2 ${fEur0.format(p.s2)}</span></span></span><span>${p.mesi} ${p.mesi === 1 ? 'mese' : 'mesi'} · media ${fEur0.format(p.mesi ? t / p.mesi : 0)}/mese</span>${tp ? `<span>${A - 1}: ${fEur0.format(tp)} ${delta(t, tp)}</span>` : '<span>nuovo quest\'anno</span>'}</div>
     </div>`;
   }).join('');
   // Tabella persona × mese
@@ -1583,7 +1606,7 @@ function renderRS(){
         </div>
       </div>
       <div class="card"><h3>Quanto ha preso ognuno</h3>${prows}
-        <div class="legend2"><span><i class="dot" style="background:var(--c1)"></i>barra piena = stipendio 1</span><span><i class="dot" style="background:color-mix(in srgb,var(--c1) 45%,transparent)"></i>barra chiara = <span class="p2">stipendio 2</span></span></div>
+        <div class="legend2"><span><i class="dot" style="background:var(--c1)"></i>barra piena = stipendio 1</span><span class="solo-pieno"><i class="dot" style="background:color-mix(in srgb,var(--c1) 45%,transparent)"></i>barra chiara = <span class="p2">stipendio 2</span></span></div>
       </div>
       <div class="card"><h3>Mese per mese</h3><div class="chart" id="rsChart"></div>
         <div class="legend2">${ids.map(id => `<span><i class="dot" style="background:${colP(id)}"></i>${esc(nomeP(id))}</span>`).join('')}</div>
@@ -1647,8 +1670,8 @@ function openSt(pid){
   $('stSub').textContent = `Busta paga di ${fMonth.format(parse(m + '-01'))}${SOCI.some(s => s.id === pid) ? ' · compenso socio' : ''}`;
   const campo = (id, lab, hint, v) => `<div class="field"><label for="${id}">${lab} <span class="hint">${hint}</span></label><div class="money"><span>€</span><input id="${id}" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${toField(v)}"></div></div>`;
   $('stFields').innerHTML = f24 ? campo('stF', 'F24', '· importo del mese', r.importo)
-    : campo('stA', 'Stipendio 1', '· attività di Incasso1', r.s1) + campo('stB', '<span class="p2">Stipendio 2</span>', '· attività di Incasso2', r.s2);
-  $('stErr').hidden = true; $('stDel').hidden = !stRec(m, pid); $('stSave').disabled = false;
+    : campo('stA', 'Stipendio 1', '· attività di Incasso1', r.s1) + campo('stB', '<span class="p2">Stipendio 2</span>', '· attività di Incasso2', LIM ? null : r.s2).replace('<div class="field">', '<div class="field solo-pieno">');
+  $('stErr').hidden = true; $('stDel').hidden = LIM || !stRec(m, pid); $('stSave').disabled = false;
   updStCalc();
   $('dlgSt').showModal();
   setTimeout(() => (f24 ? $('stF') : $('stA')).focus(), 50);
@@ -1657,7 +1680,7 @@ function updStCalc(){
   if(stEdit === 'f24'){ $('stCalc').hidden = true; return; }
   const a = money($('stA').value), b = money($('stB').value);
   $('stCalc').hidden = false;
-  $('stCalc').innerHTML = `<span style="display:flex;flex-direction:column;gap:2px"><span>Totale stipendio 1 + 2</span><b class="num">${eur((Number.isFinite(a) ? a : 0) + (Number.isFinite(b) ? b : 0))}</b></span>`;
+  $('stCalc').innerHTML = `<span style="display:flex;flex-direction:column;gap:2px"><span>${LIM ? 'Totale' : 'Totale stipendio 1 + 2'}</span><b class="num">${eur((Number.isFinite(a) ? a : 0) + (Number.isFinite(b) ? b : 0))}</b></span>`;
 }
 $('stFields').addEventListener('input', updStCalc);
 $('stCancel').onclick = () => $('dlgSt').close();
@@ -1669,7 +1692,7 @@ $('stForm').addEventListener('submit', async e => {
   let rec;
   if(stEdit === 'f24'){ const v = money($('stF').value); if(Number.isNaN(v)) return err('Scrivi un importo valido, per esempio 1850,00.'); rec = v == null ? null : { mese: month, persona: 'f24', importo: v }; }
   else {
-    const a = money($('stA').value), b = money($('stB').value);
+    const a = money($('stA').value), b = LIM ? (stRec(month, stEdit)?.s2 ?? null) : money($('stB').value);
     if(Number.isNaN(a) || Number.isNaN(b)) return err('Scrivi importi validi, per esempio 1250,00.');
     rec = a == null && b == null ? null : { mese: month, persona: stEdit, s1: a, s2: b };
   }
@@ -1902,10 +1925,11 @@ function openDay(d){
   $('dTitle').textContent = fLong.format(parse(d));
   $('fI1').value = toField(g.incasso1);
   $('fAm').value = toField(g.mattina);
-  $('fI2').value = toField(g.incasso2);
+  $('fI2').value = LIM ? '' : toField(g.incasso2);
+  if(LIM) $('fAm').value = '';
   $('fNote').value = g.note || '';
   $('fErr').hidden = true;
-  $('fDel').hidden = !hasData(g);
+  $('fDel').hidden = LIM || !hasData(g);
   $('fSave').disabled = false;
   updCalc();
   $('dlg').showModal();
@@ -1929,6 +1953,7 @@ $('dlg').addEventListener('click', e => { if(e.target === $('dlg')) $('dlg').clo
 $('dayForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = readForm();
+  if(LIM){ const g0 = G[editing] || {}; f.incasso2 = g0.incasso2 ?? null; f.mattina = g0.mattina ?? null; }
   const err = m => { $('fErr').textContent = m; $('fErr').hidden = false; };
   if([f.incasso1, f.mattina, f.incasso2].some(v => Number.isNaN(v))) return err('Controlla gli importi: scrivi solo numeri, per esempio 1250,50.');
   if(f.mattina != null && f.incasso1 == null && f.incasso2 == null) return err('Il parziale mattina va con gli incassi della giornata.');
@@ -2026,13 +2051,14 @@ $('tab-riepilogo').onclick = () => setView('riepilogo');
 })();
 $('acct').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
 document.addEventListener('click', e => { if(!$('menu').hidden && !$('menu').contains(e.target)) $('menu').hidden = true; });
-$('logoutBtn').onclick = () => { $('menu').hidden = true; backend.logout(); };
+$('logoutBtn').onclick = () => { $('menu').hidden = true; lsDel('bar-sblocco'); backend.logout(); };
+$('pwCambia').onclick = () => { $('menu').hidden = true; cambiaPassword(); };
 const net = () => $('offline').hidden = navigator.onLine;
 addEventListener('online', net); addEventListener('offline', net); net();
 
 function gate(which, msg){
   $('gate').hidden = !which;
-  for(const k of ['loading','login','denied','error']) $('gate-' + k).hidden = k !== which;
+  for(const k of ['loading','login','denied','error','pw']) $('gate-' + k).hidden = k !== which;
   if(which === 'loading' && msg) $('gate-loading-msg').textContent = msg;
   if(which === 'denied') $('gate-email').textContent = msg || '';
   if(which === 'error' && msg) $('gate-error-msg').textContent = msg;
@@ -2064,9 +2090,106 @@ $('promOk').onclick = () => {
   setTimeout(() => $('ftFile')?.click(), 50);
 };
 
+/* Password dell'app, dopo il login Google. La prima volta si sceglie (salvata solo come impronta PBKDF2 in
+   bar_impostazioni/accesso). Password giusta = tutto; la parola "password" = vista ridotta, senza attività 2
+   (tutto ciò che ha il pallino) e senza mattina/pomeriggio. Ogni dispositivo se la ricorda finché non si preme Esci.
+   NB: è un filtro di visualizzazione, i dati dell'attività 2 arrivano comunque sul dispositivo. */
+const PW_RIDOTTA = 'password';
+let LIM = false, sbloccato = false;
+const lsDel = k => { try{ localStorage.removeItem(k); }catch(e){} };
+async function pbkdf2(pw, sale){
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const b = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(sale), iterations: 150000, hash: 'SHA-256' }, k, 256);
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function chiediPw({ msg, nuova, annulla }){
+  return new Promise(res => {
+    gate('pw');
+    $('pw-msg').textContent = msg; $('pw-err').hidden = true;
+    $('pw1').value = ''; $('pw2').value = ''; $('pw2').hidden = !nuova;
+    $('pw1').placeholder = nuova ? 'Nuova password' : 'Password'; $('pw2').placeholder = 'Ripeti la password';
+    $('pw1').autocomplete = nuova ? 'new-password' : 'current-password';
+    $('pwOk').textContent = nuova ? 'Salva' : 'Entra'; $('pwAnnulla').hidden = !annulla;
+    $('pwAnnulla').onclick = () => { gate(null); res(null); };
+    $('gate-pw').onsubmit = e => { e.preventDefault(); res({ a: $('pw1').value, b: $('pw2').value, err: t => { $('pw-err').textContent = t; $('pw-err').hidden = false; } }); };
+    setTimeout(() => $('pw1').focus(), 50);
+  });
+}
+async function nuovaPassword(msg, annulla){
+  for(;;){
+    const r = await chiediPw({ msg, nuova: true, annulla }); if(!r) return false;
+    const a = r.a.trim();
+    if(a.length < 4){ r.err('Almeno 4 caratteri.'); continue; }
+    if(a.toLowerCase() === PW_RIDOTTA){ r.err('Questa parola è riservata alla vista ridotta: scegline un\'altra.'); continue; }
+    if(a !== r.b.trim()){ r.err('Le due password non sono uguali.'); continue; }
+    const sale = crypto.getRandomValues(new Uint32Array(4)).join('-'), imp = await pbkdf2(a, sale);
+    try{ await backend.setAccesso({ sale, impronta: imp }); }catch(e){ r.err('Non riesco a salvarla: ' + (e.message || 'riprova')); continue; }
+    lsSet('bar-sblocco', JSON.stringify({ m: 'pieno', imp }));
+    return true;
+  }
+}
+async function sblocca(){
+  let acc = null;
+  try{ acc = await backend.getAccesso(); }catch(e){}
+  let mem = null; try{ mem = JSON.parse(lsGet('bar-sblocco') || 'null'); }catch(e){}
+  if(!acc?.impronta){ await nuovaPassword('Primo accesso: scegli la password dell\'app. Servirà su ogni nuovo dispositivo.'); return 'pieno'; }
+  if(mem?.m === 'pieno' && mem.imp === acc.impronta) return 'pieno';
+  if(mem?.m === 'lim') return 'lim';
+  for(;;){
+    const r = await chiediPw({ msg: 'Scrivi la password.' });
+    const a = r.a.trim();
+    if(a && await pbkdf2(a, acc.sale) === acc.impronta){ lsSet('bar-sblocco', JSON.stringify({ m: 'pieno', imp: acc.impronta })); return 'pieno'; }
+    if(a.toLowerCase() === PW_RIDOTTA){ lsSet('bar-sblocco', JSON.stringify({ m: 'lim' })); return 'lim'; }
+    r.err('Password sbagliata.');
+  }
+}
+async function cambiaPassword(){
+  const ok = await nuovaPassword('Scegli la nuova password. Gli altri dispositivi la chiederanno di nuovo.', true);
+  gate(null); if(ok) toast('Password cambiata');
+}
+// Vista ridotta: i dati dell'attività 2 (Incasso2, spese, stipendi 2) e il parziale mattina non si vedono.
+function maschera(){
+  G = Object.fromEntries(Object.entries(G).map(([d, g]) => { const { incasso2, mattina, ...r } = g || {}; return [d, r]; }).filter(([, g]) => hasData(g)));
+  SP = [];
+  ST = Object.fromEntries(Object.entries(ST).map(([k, r]) => [k, r.persona === 'f24' ? r : { ...r, s2: null }]));
+}
+// Toglie dalle tabelle le colonne con il pallino (o segnate solo-pieno) e le righe dell'attività 2; nasconde riquadri e campi col pallino.
+function nascondi2(root = document.querySelector('main')){
+  for(const t of root.querySelectorAll('table')){
+    const ths = [...(t.tHead?.rows[0]?.cells || [])];
+    const via = ths.map((c, i) => c.querySelector('.p2') || c.classList.contains('solo-pieno') ? i : -1).filter(i => i >= 0);
+    if(via.length){
+      for(const row of t.rows){
+        let col = 0;
+        for(const c of [...row.cells]){
+          const span = c.colSpan || 1, dentro = via.filter(i => i >= col && i < col + span).length;
+          col += span;
+          if(!dentro) continue;
+          if(dentro >= span) c.remove(); else c.colSpan = span - dentro;
+        }
+      }
+      const cols = [...t.querySelectorAll('colgroup col')];
+      via.slice().reverse().forEach(i => cols[i]?.remove());
+    }
+    for(const p of t.querySelectorAll('tbody .p2, tfoot .p2')) p.closest('tr')?.remove();
+  }
+  for(const p of root.querySelectorAll('.p2')){
+    const l = p.parentElement;
+    if(l?.classList.contains('l')) l.parentElement.classList.add('solo-pieno');
+    else p.classList.add('solo-pieno');
+  }
+}
+
 function signedIn(u){
   me = u;
-  setTimeout(controllaPromemoria, 1500);
+  sbloccato = false;
+  sblocca().then(m => {
+    LIM = m === 'lim'; sbloccato = true;
+    document.body.classList.toggle('lim', LIM);
+    if(LIM && view === 'spese') view = 'giorni';
+    gate(null); render();
+    setTimeout(controllaPromemoria, 1500);
+  });
   $('acct').textContent = (u.nome || u.email || '?').charAt(0).toUpperCase();
   $('m-email').textContent = u.email;
   render();
@@ -2176,6 +2299,8 @@ function startDemo(){
     delSpesa: async id => { SP = SP.filter(s => s.id !== id); storeSp(); },
     setTipi: async t => { TIPI = t; storeSp(); },
     setSt: async (id, r) => { ST = { ...ST, [id]: r }; storeSt(); },
+    getAccesso: async () => JSON.parse(lsGet('bar-prova-accesso') || 'null'),
+    setAccesso: async a => lsSet('bar-prova-accesso', JSON.stringify(a)),
     addFatture: async list => { FT = [...FT, ...list]; storeFt(); },
     setPromemoria: async p => { lsSet('bar-prova-prom', JSON.stringify(p)); },
     setCatFt: async m => { CATF = m; lsSet('bar-prova-catft', JSON.stringify(CATF)); render(); if($('dlgCat').open) drawCat(); },
@@ -2186,7 +2311,7 @@ function startDemo(){
     updPers: async (id, p) => { PERS = PERS.map(x => x.id === id ? { ...x, ...p } : x); storeSt(); },
     delPers: async id => { PERS = PERS.filter(x => x.id !== id); storeSt(); },
     nomiFerie: async () => ['Anna Rossi', 'Elena Fabbri'],
-    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); localStorage.removeItem('bar-prova-catft'); }catch(e){} location.href = location.pathname; },
+    logout: async () => { try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_SP); localStorage.removeItem(KEY_ST); localStorage.removeItem(KEY_FT); localStorage.removeItem('bar-prova-prom'); localStorage.removeItem('bar-prova-catft'); localStorage.removeItem('bar-prova-accesso'); }catch(e){} location.href = location.pathname; },
   };
   $('notice').innerHTML = '<div class="banner">Simulazione: dati finti, solo in questo browser, il database vero non viene toccato. "Esci" dal menu in alto a destra chiude la simulazione.</div>';
   gate(null);
@@ -2235,6 +2360,8 @@ async function startFirebase(){
       setCatFt: m => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), { mappa: m, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setFtCat: (id, c) => run(S.updateDoc(S.doc(ftCol, id), { categoria: c ? c : S.deleteField() })),
       setPromemoria: p => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), { ...p, da: auth.currentUser.email })),
+      getAccesso: async () => { const s = await run(S.getDoc(S.doc(db, 'bar_impostazioni', 'accesso'))); return s.exists() ? s.data() : null; },
+      setAccesso: a => run(S.setDoc(S.doc(db, 'bar_impostazioni', 'accesso'), { ...a, aggiornato: new Date().toISOString(), da: auth.currentUser.email })),
       setSt: (id, r) => run(S.setDoc(S.doc(stCol, id), { ...r, aggiornato: S.serverTimestamp(), da: auth.currentUser.email })),
       delSt: id => run(S.deleteDoc(S.doc(stCol, id))),
       addPers: p => run(S.addDoc(persCol, p)),
