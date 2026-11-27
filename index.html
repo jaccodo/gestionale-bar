@@ -22,7 +22,7 @@
   --accent:#1c2230; --on-accent:#ffffff;
   --i1:#2f63b6; --i1-soft:#e4ecf8; --i2:#c0562f; --i2-soft:#f8e8e1;
   --am:#b98100; --am-soft:#fbf0d6; --pm:#5a4fb0; --pm-soft:#ebe8f8;
-  --t0:#2f7d5b; --t1:#c0562f; --t2:#3b6fb6; --t3:#a8437f; --t4:#8a7a18; --t5:#6a52b8; --t6:#1f8a99; --t7:#8a5a2b;
+  --t0:#2f7d5b; --t1:#c0562f; --t2:#3b6fb6; --t3:#a8437f; --t4:#8a7a18; --t5:#6a52b8; --t6:#1f8a99; --t7:#8a5a2b; --t8:#5b6b8a;
   --hol:#c62828; --hol-soft:#fde7e7;
   --good:#188046; --bad:#c62828; --warn:#8a5a00; --warn-soft:#fdf0d3;
   --u-bg:#1c2230; --u-fg:#f3f5f9; --u-muted:#a9b2c3; --u-line:rgba(255,255,255,.14); --u-soft:rgba(255,255,255,.07); --u-good:#5fd896; --u-bad:#ff8f8f;
@@ -728,10 +728,10 @@ function stStats(mesi){
   o.t1 = o.d1 + o.s1; o.t2 = o.d2 + o.s2; o.tot = o.t1 + o.t2; o.totF = o.tot + o.f24;
   return o;
 }
-// Tipologie a…h: nomi di base in TIPI_BASE, rinominabili da Spese › Tipologie.
-const TIPI_ID = ['a','b','c','d','e','f','g','h'];
+// Tipologie a…i: nomi di base in TIPI_BASE, rinominabili da Spese › Tipologie.
+const TIPI_ID = ['a','b','c','d','e','f','g','h','i'];
 // Tipologie scelte dall'utente il 2026-11-26. Si possono rinominare da Spese › Tipologie (il nome salvato vince).
-const TIPI_BASE = { a:'Spesa', b:'Frutta/verdura', c:'Pasticceria', d:'Ghiaccio', e:'Giornali', f:'Pasti/staff', g:'Stipendio', h:'Varie' };
+const TIPI_BASE = { a:'Spesa', b:'Frutta/verdura', c:'Pasticceria', d:'Ghiaccio', e:'Giornali', f:'Pasti/staff', g:'Stipendio', h:'Varie', i:'Sponsor' };
 let TIPI = {};
 const tipoNome = t => (TIPI[t] || '').trim() || TIPI_BASE[t] || t.toUpperCase();
 
@@ -1089,7 +1089,7 @@ const tabellaMesi = tabellaPeriodi;
 // Voci dei costi commerciali: categorie delle fatture (Incasso1) e tipologie delle spese (Incasso2).
 // Tipologie o categorie non elencate finiscono in Generali. Gli stipendi stanno solo nei costi del personale.
 const VOCI_CC = [
-  { nome: 'Servizi', ft: ['Energia elettrica', 'Acqua', 'Telefoniche', 'Vigilanza', 'Pubblicità', 'Consulenze e corsi'], sp: [] },
+  { nome: 'Servizi', ft: ['Energia elettrica', 'Acqua', 'Telefoniche', 'Vigilanza', 'Pubblicità', 'Consulenze e corsi'], sp: ['i'] },
   { nome: 'Materie prime', ft: ['Merci'], sp: ['a', 'b', 'c', 'd'] },
   { nome: 'Affitto', ft: ['Affitto'], sp: [] },
   { nome: 'Commercialista', ft: ['Contabilità e paghe'], sp: [] },
