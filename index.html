@@ -336,6 +336,10 @@ textarea.txt{width:100%;min-height:64px;resize:vertical;font:inherit;font-weight
 
 /* riepilogo */
 .cards{display:grid;gap:12px}
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px}
+.cg2 .l{font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:2px}
+.cg2 > div + div{border-left:1px solid var(--line);padding-left:12px}
+@media (max-width:420px){.cg2 .big{font-size:1.55rem}}
 /* Torta Incasso1 / Incasso2 nel calendario */
 .card.torta{margin-top:12px}
 .torta-in{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -1109,6 +1113,8 @@ const VOCI_CC = [
   { nome: 'Operativi', ft: ['Materiale consumo', 'Attrezzatura'], sp: ['f'] },
 ];
 const VOCE_ALTRO = 4;
+// Costi fissi (scelti dall'utente): tutto il personale + queste categorie di fatture (IVA compresa, come il costo al giorno).
+const CAT_FISSE = ['Affitto', 'Contabilità e paghe', 'Energia elettrica', 'Acqua', 'Telefoniche', 'Vigilanza', 'Assicurazioni', 'Imposte varie'];
 // Primo e ultimo giorno con dati in memoria (incassi, spese, fatture, buste paga), mai oltre oggi.
 function rangeDati(){
   let a = '', b = '';
@@ -1130,7 +1136,7 @@ function bil(P){
   let i1 = 0, i2 = 0, giorniInc = 0;
   for(const [d, g] of Object.entries(G)) if(dentro(d) && g){ i1 += g.incasso1 || 0; i2 += g.incasso2 || 0; if(g.incasso1 != null || g.incasso2 != null) giorniInc++; }
   const voci = VOCI_CC.map(v => ({ nome: v.nome, sp: 0, ft: 0 }));
-  let altri = 0, ftImp = 0;   // spese segnate a mano con la tipologia Stipendio: vanno nel personale (Incasso2)
+  let altri = 0, ftImp = 0, ftFisse = 0;   // spese segnate a mano con la tipologia Stipendio: vanno nel personale (Incasso2)
   for(const s of SP){
     if(!dentro(s.data)) continue;
     if(s.tipo === TIPO_STIP){ altri += s.importo || 0; continue; }
@@ -1140,6 +1146,7 @@ function bil(P){
     if(!dentro(f.data)) continue;
     const c = catOf(f), i = VOCI_CC.findIndex(v => v.ft.includes(c)); voci[i >= 0 ? i : VOCE_ALTRO].ft += f.totale || 0;
     ftImp += f.imponibile || 0;
+    if(CAT_FISSE.includes(c)) ftFisse += f.totale || 0;
   }
   voci.forEach(v => v.tot = v.sp + v.ft);
   const cc = { sp: voci.reduce((x, v) => x + v.sp, 0), ft: voci.reduce((x, v) => x + v.ft, 0) }; cc.tot = cc.sp + cc.ft;
@@ -1158,7 +1165,7 @@ function bil(P){
   const i1n = i1 / (1 + IVA_INC / 100);
   const c1 = ftImp + pe.d1 + pe.s1 + pe.f24, c2 = cc.sp + pe.d2 + pe.s2 + pe.altri;
   return { i1, i2, tot: i1 + i2, i1n, ivaInc: i1 - i1n, ftImp, ivaFt: cc.ft - ftImp, giorniInc, voci, cc, pe, c1, c2, u1: i1n - c1, u2: i2 - c2,
-    costi: c1 + c2, utile: i1n + i2 - c1 - c2, costiLordi: cc.tot + pe.tot, giorni: giorniDi(P) };
+    costi: c1 + c2, utile: i1n + i2 - c1 - c2, costiLordi: cc.tot + pe.tot, fissi: pe.tot + ftFisse, giorni: giorniDi(P) };
 }
 
 // Vista del riepilogo: anno, mese o media al giorno dell'anno. Senza scelta segue lo zoom.
@@ -1177,7 +1184,11 @@ function renderRiepilogo(){
   const all = bil('*'), gAll = all.giorni;
   const costoGiorno = `<div class="card">
       <h3>Quanto costa il bar al giorno</h3>
-      ${gAll.n ? `<div class="big num">${eur(all.costiLordi / gAll.n)}</div>
+      ${gAll.n ? `<div class="cg2">
+        <div><div class="l">Tutti i costi</div><div class="big num">${eur(all.costiLordi / gAll.n)}</div></div>
+        <div><div class="l">Solo costi fissi</div><div class="big num">${eur(all.fissi / gAll.n)}</div></div>
+      </div>
+      <div class="sub">Costi fissi: personale (stipendi, F24, soci), affitto, commercialista, luce, acqua, telefono, vigilanza, assicurazioni, imposte varie (${eur(all.fissi)}, ${pct(all.fissi, all.costiLordi)} di tutti i costi).</div>
       <div class="sub">Tutti i costi a bilancio (${eur(all.costiLordi)}) ÷ ${gAll.n} giorni di dati in memoria, dal ${fGg.format(parse(gAll.a))} al ${fGg.format(parse(gAll.b))}</div>
       <div class="kpis">
         <div><div class="l">Costi commerciali</div><div class="v num">${eur(all.cc.tot / gAll.n)}</div><div class="sub" style="margin:0;font-size:.74rem">al giorno</div></div>
