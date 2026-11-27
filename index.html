@@ -2813,18 +2813,45 @@ async function startFirebase(){
       for(const d of ['dlg','dlgSp','dlgTip','dlgSt','dlgPers','dlgFt','dlgFtEd','dlgProm','dlgCat']) if($(d).open) $(d).close();
       if(!user){ me = null; G = {}; SP = []; TIPI = {}; ST = {}; PERS = []; FT = []; CATF = {}; rsOpen = false; gate('login'); return; }
       gate('loading', 'Carico gli incassi…');
-      let first = true;
-      unsub = S.onSnapshot(col, snap => {
-        G = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
-        if(first){
-          first = false; gate(null); signedIn({ email: user.email, nome: user.displayName });
-          unsubs.push(S.onSnapshot(spCol, s2 => { SP = s2.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
+      /* Letture ridotte (piano gratuito Firebase: 50.000 letture al giorno, condivise con le altre app).
+         Giorni, spese, fatture e stipendi si leggono dalla copia salvata sul dispositivo (gratis); dal server
+         si ascoltano in tempo reale solo i dati recenti (dal primo del mese di due mesi fa) e una volta al giorno
+         si riallinea tutto dal server (così arrivano anche le modifiche e le cancellazioni ai dati vecchi). */
+      const da = shiftMonth(TODAY().slice(0, 7), -2), daG = da + '-01';
+      const big = [
+        { c: col, rec: S.query(col, S.where(S.documentId(), '>=', daG)), set: q => { G = Object.fromEntries(q.docs.map(d => [d.id, d.data()])); } },
+        { c: spCol, rec: S.query(spCol, S.where('data', '>=', daG)), set: q => { SP = q.docs.map(d => ({ ...d.data(), id: d.id })); } },
+        { c: ftCol, rec: S.query(ftCol, S.where('data', '>=', daG)), set: q => { FT = q.docs.map(d => ({ ...d.data(), id: d.id })); } },
+        { c: stCol, rec: S.query(stCol, S.where('mese', '>=', da)), set: q => { ST = Object.fromEntries(q.docs.map(d => [d.id, d.data()])); } },
+      ];
+      const KEY_SYNC = 'bar-sync-' + user.uid;
+      const errore = err => {
+        if(err?.code === 'permission-denied') gate('denied', user.email);
+        else gate('error', 'Il gestionale non è raggiungibile. Controlla la connessione e riprova.');
+      };
+      // Tutto dal server (circa una lettura per documento): solo se l'ultima volta è di più di 20 ore fa o la copia è vuota.
+      const tuttoDalServer = async () => {
+        const r = await Promise.all(big.map(x => S.getDocs(x.c)));
+        if(r.every(q => !q.metadata.fromCache)) lsSet(KEY_SYNC, String(Date.now()));
+      };
+      (async () => {
+        try{ if(Date.now() - Number(lsGet(KEY_SYNC) || 0) > 20 * 3600e3) await tuttoDalServer(); }
+        catch(err){ if(err?.code === 'permission-denied') return errore(err); }
+        let first = true, controllato = false;
+        big.forEach((x, i) => {
+          // dal server: solo i recenti (tengono aggiornata la copia sul dispositivo)
+          unsubs.push(S.onSnapshot(x.rec, () => {}, i === 0 ? errore : () => {}));
+          // dalla copia sul dispositivo: tutto
+          unsubs.push(S.onSnapshot(x.c, { source: 'cache' }, q => {
+            x.set(q);
+            if(i !== 0) return render();
+            if(!controllato){ controllato = true; if(!q.size) tuttoDalServer().catch(() => {}); }
+            if(!first) return render();
+            first = false; gate(null); signedIn({ email: user.email, nome: user.displayName });
           unsubs.push(S.onSnapshot(tipiDoc, s3 => { TIPI = s3.exists() ? s3.data() : {}; render(); }, () => {}));
-          unsubs.push(S.onSnapshot(ftCol, s6 => { FT = s6.docs.map(d => ({ ...d.data(), id: d.id })); render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'categorie_fatture'), s8 => { CATF = (s8.exists() && s8.data().mappa) || {}; render(); if($('dlgCat').open) drawCat(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'iva'), s9 => { const a = s9.exists() ? Number(s9.data().aliquota) : NaN; IVA_INC = Number.isFinite(a) ? a : 10; render(); }, () => {}));
           unsubs.push(S.onSnapshot(S.doc(db, 'bar_impostazioni', 'promemoria_fatture'), s7 => { promStato = s7.exists() ? s7.data() : null; }, () => {}));
-          unsubs.push(S.onSnapshot(stCol, s4 => { ST = Object.fromEntries(s4.docs.map(d => [d.id, d.data()])); render(); }, () => {}));
           let seedFatto = false;
           unsubs.push(S.onSnapshot(persCol, s5 => {
             PERS = s5.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => String(a.creato || '').localeCompare(String(b.creato || '')) || a.nome.localeCompare(b.nome));
@@ -2841,11 +2868,9 @@ async function startFirebase(){
             b.set(flag, { caricati: true, quando: new Date().toISOString(), da: user.email });
             await b.commit();
           }
-        } else render();
-      }, err => {
-        if(err.code === 'permission-denied') gate('denied', user.email);
-        else gate('error', 'Il gestionale non è raggiungibile. Controlla la connessione e riprova.');
-      });
+          }, () => {}));
+        });
+      })();
     });
   }catch(err){ console.error(err); gate('error', 'Non riesco ad avviare l\'app. Controlla la connessione a internet e riprova.'); }
 }
