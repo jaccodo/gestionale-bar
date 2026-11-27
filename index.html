@@ -1069,7 +1069,11 @@ function renderFatture(){
         <thead><tr><th>Data</th><th class="l" style="text-align:left">Fornitore</th><th>Imponib.</th><th>IVA</th><th>Totale</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td>Totale</td><td></td><td>${num(fm.imp)}</td><td>${num(fm.iva)}</td><td>${num(fm.tot)}</td></tr></tfoot>
-      </table></div></div>` : '<div class="card"><p class="muted" style="margin:0">Nessuna fattura in questo mese.</p></div>'}</div>
+      </table></div></div>` : (() => {
+        // Mese vuoto: porta subito dove ci sono le fatture, così la scheda non sembra vuota.
+        const ult = FT.map(f => f.data).filter(Boolean).sort().pop();
+        return `<div class="card"><p class="muted" style="margin:0 0 ${FT.length ? 12 : 0}px">Nessuna fattura in questo mese.${FT.length ? ` Nel gestionale ci sono ${FT.length} fatture.` : ''}</p>${ult ? `<div class="st-actions" style="margin:0;flex-wrap:wrap"><button class="btn" type="button" data-vai="${ult.slice(0, 7)}">Vai a ${fMonth.format(parse(ult.slice(0, 7) + '-01'))}</button><button class="btn ghost" type="button" data-anno="1">Vedi tutto il ${month.slice(0, 4)}</button></div>` : ''}</div>`;
+      })()}</div>
       <p class="hint">Le fatture arriveranno da sole dal sistema di cassa; nel frattempo si aggiungono a mano. Data = data di emissione. Tocca una fattura per i dettagli. Tocca il mese in alto (o pizzica) per vedere l'anno.</p>`;
     return;
   }
@@ -1250,7 +1254,11 @@ $('feForm').addEventListener('submit', async e => {
     toast('Fattura salvata'); prossimaFe();
   }catch(e2){ $('feSave').disabled = false; err('Salvataggio non riuscito: ' + (e2.message || 'riprova')); }
 });
-$('v-fatture').addEventListener('click', e => { if(e.target.closest('#ftNew')) apriModuloFattura(null, false); });
+$('v-fatture').addEventListener('click', e => {
+  if(e.target.closest('#ftNew')) return apriModuloFattura(null, false);
+  const v = e.target.closest('[data-vai]'); if(v){ month = v.dataset.vai; ssSet('bar-mese', month); calLevel = 'm'; render(); return; }
+  if(e.target.closest('[data-anno]')){ calLevel = 'y'; render(); }
+});
 $('v-fatture').addEventListener('change', async e => {
   if(e.target.id !== 'ftFile' || !e.target.files.length) return;
   try{ await importaFatture([...e.target.files]); }
